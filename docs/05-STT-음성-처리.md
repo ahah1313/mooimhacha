@@ -37,7 +37,7 @@ getUserMedia 오디오 캡처
 - 추론은 발화 종료 시점에 해당 구간만 대상으로 수행 → 디바운스 불필요.
 - 화면 미리보기(interim)가 필요하면 짧은 청크 단위 추론을 추가 검토.
 
-> **PoC 메모 (2026-05-18)**: PoC 파이프라인은 추론에 transformers.js, VAD에 `@ricky0123/vad-web`(Silero VAD)를 채택. 발화 단위 준실시간(발화 종료 후 표시) 방식. 상세 설계 — [progress/2026-05-18-STT-PoC-파이프라인.md](../progress/2026-05-18-STT-PoC-파이프라인.md)
+> **PoC 메모 (2026-05-18)**: PoC 파이프라인은 추론에 transformers.js, VAD에 `@ricky0123/vad-web`(Silero VAD)를 채택. 발화 단위 준실시간(발화 종료 후 표시) 방식.
 
 ## 발화 메타데이터
 
