@@ -20,11 +20,13 @@
 | 자동 업데이트 | `electron-updater` (V2) |
 | 트레이 아이콘 | `Tray` (선택) |
 
-## STT 모델 패키징
+## STT 사이드카 (RealtimeSTT)
 
-- Moonshine ONNX 모델을 앱에 동봉하거나 최초 실행 시 다운로드 (방식 미결정 — [09](09-미결정-사항.md))
-- 동봉 시 빌드 산출물 용량 증가, 다운로드 시 최초 실행 시간·오프라인 이슈 → 트레이드오프 검토
-- 모델 추론은 렌더러 프로세스 또는 Worker에서 수행, 메인 UI 블로킹 방지
+- RealtimeSTT(Python, faster-whisper)는 **PyInstaller 단일 실행파일로 번들해 앱에 동봉**한다 — 사용자에게 Python 설치를 요구하지 않는다.
+- **faster-whisper 모델 가중치는 최초 실행 시 다운로드** (설치 파일 용량 절약). 다운로드 완료 전에는 회의 시작 불가 안내.
+- Electron 메인 프로세스가 사이드카 실행파일을 `child_process.spawn`으로 띄우고 **stdin/stdout NDJSON**으로 통신, 비정상 종료 시 지수 백오프로 재시작.
+- 사이드카는 별도 OS 프로세스이므로 메인 UI를 블로킹하지 않는다.
+- 통신·재시작·손실 처리의 세부는 [05](05-STT-음성-처리.md) 참조.
 
 ## 빌드·배포
 
