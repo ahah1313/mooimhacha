@@ -1,0 +1,39 @@
+name: CI / client
+
+on:
+  push:
+    branches: [main]
+    paths: ["client/**"]
+  pull_request:
+    branches: [main]
+    paths: ["client/**"]
+
+concurrency:
+  group: ci-client-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  client:
+    name: client (React + Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test
