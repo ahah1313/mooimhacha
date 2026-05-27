@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>무임하차 — 팀플 협업 보조</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" />
+
+<style>
+/* ============================================================
+   무임하차 — 팀플 협업 보조 (SPA)
+   로그인 → 온보딩 → 홈 → 대시보드
+   Arc / Family 감성 · 라이트 + 다크 · 그린 베이스
+   ============================================================ */
+
+/* ---------- 토큰: 라이트 ---------- */
+:root {
+  --font-display: "Bricolage Grotesque", "Pretendard Variable", sans-serif;
+  --font-body: "Pretendard Variable", "Bricolage Grotesque", -apple-system, sans-serif;
+
+  --ambient: radial-gradient(1100px 680px at 16% -10%, #e7efe6 0%, transparent 60%),
+             radial-gradient(900px 600px at 100% 112%, #e3ecf3 0%, transparent 56%), #d9ddd4;
+  --bg:        #f6f4ee;
+  --bg-2:      #efece3;
+  --surface:   #ffffff;
+  --surface-2: #faf8f3;
+  --surface-3: #f1eee6;
+  --titlebar:  #efece4;
+
+  --border:    #e7e3d8;
+  --border-2:  #efece3;
+
+  --text:      #1d2a23;
+  --text-mut:  #5f6d63;
+  --text-soft: #9aa49a;
+
+  --green:        #1d9e75;
+  --green-bright: #16c08a;
+  --green-soft:   #e4f3ec;
+  --green-deep:   #0f6f55;
+  --blue:         #4f7ef0;
+  --blue-soft:    #e6ecfd;
+  --violet:       #8a6df0;
+  --violet-soft:  #ece6fd;
+  --coral:        #f0664f;
+  --coral-soft:   #fde9e4;
+  --amber:        #e0972a;
+  --amber-soft:   #fbefd8;
+  --pink:         #d7507c;
+  --pink-soft:    #fbe6ee;
+
+  --track:     #ece8dd;
+
+  --av1: linear-gradient(150deg,#1fc596,#0f7d5c);
+  --av2: linear-gradient(150deg,#5b8bf3,#3a5fd0);
+  --av3: linear-gradient(150deg,#f4ad53,#e87d3a);
+  --av4: linear-gradient(150deg,#e76b94,#bf3f72);
+
+  --shadow-sm: 0 1px 2px rgba(28,42,33,.05), 0 2px 6px rgba(28,42,33,.04);
+  --shadow-md: 0 2px 4px rgba(28,42,33,.04), 0 10px 26px rgba(28,42,33,.07);
+  --shadow-lg: 0 8px 18px rgba(28,42,33,.08), 0 30px 60px rgba(28,42,33,.13);
+  --grain: .4;
+}
+
+/* ---------- 토큰: 다크 ---------- */
+[data-theme="dark"] {
+  --ambient: radial-gradient(1100px 700px at 16% -10%, #16241d 0%, transparent 62%),
+             radial-gradient(900px 600px at 100% 108%, #16202a 0%, transparent 58%), #070a09;
+  --bg:        #121714;
+  --bg-2:      #0e1310;
+  --surface:   #1a211c;
+  --surface-2: #161d18;
+  --surface-3: #232b23;
+  --titlebar:  #161c18;
+
+  --border:    #2b342c;
+  --border-2:  #232b24;
+
+  --text:      #e9efe8;
+  --text-mut:  #93a096;
+  --text-soft: #5f6c62;
+
+  --green:        #2cd49a;
+  --green-bright: #38e8ab;
+  --green-soft:   rgba(44,212,154,.13);
+  --green-deep:   #0f6f55;
+  --blue:         #7b9cf8;
+  --blue-soft:    rgba(123,156,248,.14);
+  --violet:       #a78ff7;
+  --violet-soft:  rgba(167,143,247,.15);
+  --coral:        #ff8068;
+  --coral-soft:   rgba(255,128,104,.15);
+  --amber:        #f2b552;
+  --amber-soft:   rgba(242,181,82,.15);
+  --pink:         #ec789f;
+  --pink-soft:    rgba(236,120,159,.15);
+
+  --track:     #283027;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md: 0 2px 6px rgba(0,0,0,.36), 0 14px 32px rgba(0,0,0,.46);
+  --shadow-lg: 0 10px 24px rgba(0,0,0,.5), 0 36px 70px rgba(0,0,0,.62);
+  --grain: .5;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--ambient);
+  background-attachment: fixed;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  padding: 0;
+  transition: background-color .45s ease;
+}
+body::after {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 9999;
+  opacity: var(--grain);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+::selection { background: var(--green); color: #fff; }
+.ti { line-height: 1; }
+
+/* ---------- 앱 윈도우 ---------- */
+.app {
+  width: 100%;
+  height: 100vh;
+  background: var(--bg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: background-color .45s ease;
+  animation: appIn .7s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes appIn { from { opacity: 0; transform: translateY(14px) scale(.992); } to { opacity: 1; transform: none; } }
+
+.app-body { flex: 1; min-height: 0; position: relative; }
+
+/* ---------- 화면 전환 ---------- */
+.screen { display: none; height: 100%; }
+.screen.active { display: flex; }
+
+.reveal { animation: fadeUp .58s cubic-bezier(.2,.75,.2,1) both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: none; } }
+
+/* ============================================================
+   공통 컴포넌트
+   ============================================================ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  transition: background-color .45s ease, border-color .45s ease;
+}
+.card-head { display: flex; align-items: center; gap: 9px; padding: 16px 18px 12px; }
+.card-title { font-size: 14px; font-weight: 700; letter-spacing: -.01em; display: flex; align-items: center; gap: 7px; }
+.card-title .ti { color: var(--green); font-size: 16px; }
+.card-link {
+  margin-left: auto; font-size: 11.5px; font-weight: 600;
+  color: var(--text-soft); cursor: pointer;
+  display: flex; align-items: center; gap: 3px;
+  transition: color .15s ease;
+}
+.card-link:hover { color: var(--green); }
+
+.btn {
+  font-family: var(--font-body);
+  font-size: 13px; font-weight: 700;
+  border-radius: 11px; padding: 9px 15px;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease, opacity .15s ease;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.btn .ti { font-size: 15px; }
+.btn-sm { font-size: 12px; padding: 7px 11px; border-radius: 9px; }
+.btn-primary { background: var(--green); border-color: var(--green); color: #fff; }
+.btn-primary:hover { box-shadow: 0 8px 18px -6px rgba(29,158,117,.6); }
+.btn-danger { background: var(--coral-soft); border-color: transparent; color: var(--coral); }
+.btn-ghost { background: transparent; }
+.btn-full { width: 100%; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 9px; border-radius: 999px;
+}
+.b-green { background: var(--green-soft); color: var(--green); }
+.b-blue  { background: var(--blue-soft);  color: var(--blue); }
+.b-amber { background: var(--amber-soft); color: var(--amber); }
+.b-coral { background: var(--coral-soft); color: var(--coral); }
+.b-gray  { background: var(--surface-3);  color: var(--text-mut); }
+
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); animation: pulse 1.6s infinite; }
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(240,102,79,.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(240,102,79,0); }
+  100% { box-shadow: 0 0 0 0 rgba(240,102,79,0); }
+}
+
+.av {
+  border-radius: 50%;
+  display: grid; place-items: center;
+  color: #fff; font-weight: 700;
+  font-family: var(--font-display);
+  flex: 0 0 auto;
+}
+.av.a1 { background: var(--av1); } .av.a2 { background: var(--av2); }
+.av.a3 { background: var(--av3); } .av.a4 { background: var(--av4); }
+.av-sm { width: 26px; height: 26px; font-size: 10.5px; }
+.av-md { width: 34px; height: 34px; font-size: 13px; }
+.av-lg { width: 42px; height: 42px; font-size: 15px; }
+
+/* 폼 */
+.field { margin-bottom: 14px; }
+.field-label { font-size: 12px; font-weight: 700; display: block; margin-bottom: 6px; }
+.field-label .opt { font-weight: 500; color: var(--text-soft); }
+.input, select.input, textarea.input {
+  width: 100%;
+  font-family: var(--font-body); font-size: 13px; color: var(--text);
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: 11px;
+  padding: 10px 12px;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.input:focus { outline: none; border-color: var(--green); background: var(--surface); }
+textarea.input { resize: none; }
+.field-row { display: flex; gap: 10px; }
+.field-row .field { flex: 1; }
+.field-hint { font-size: 11px; color: var(--text-soft); margin-top: 5px; }
+
+:focus-visible { outline: 2.5px solid var(--green); outline-offset: 2px; border-radius: 8px; }
+
+/* 스크롤바 */
+.scroll::-webkit-scrollbar { width: 9px; height: 9px; }
+.scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; border: 2.5px solid transparent; background-clip: padding-box; }
+
+/* ============================================================
+   화면 1 — 로그인
+   ============================================================ */
+#screen-login { }
+.login-left {
+  flex: 1.05;
+  position: relative;
+  overflow: hidden;
+  padding: 46px 52px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  color: #fff;
+  background:
+    radial-gradient(440px 340px at 86% -20%, #45dba8 0%, transparent 70%),
+    radial-gradient(560px 440px at 4% 124%, #0a5640 0%, transparent 72%),
+    linear-gradient(135deg, #1aa57c 0%, #138a67 48%, #0e6650 100%);
+}
+.login-left::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+.ll-blob { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.22), transparent 68%); pointer-events: none; }
+.ll-logo { font-family: var(--font-display); font-size: 24px; font-weight: 800; position: relative; }
+.ll-logo em { font-style: normal; color: #bdf5dd; }
+.ll-tag { font-size: 12.5px; color: rgba(255,255,255,.7); font-weight: 500; margin-top: 3px; position: relative; }
+.ll-mid { position: relative; }
+.ll-headline {
+  font-family: var(--font-display);
+  font-size: 40px; font-weight: 800; line-height: 1.18; letter-spacing: -.02em;
+}
+.ll-headline span { color: #bdf5dd; }
+.ll-sub { font-size: 13.5px; color: rgba(255,255,255,.82); line-height: 1.7; margin: 16px 0 26px; }
+.ll-feat { display: flex; align-items: center; gap: 13px; margin-bottom: 13px; }
+.ll-feat-ic {
+  width: 40px; height: 40px; border-radius: 12px; flex: 0 0 auto;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.2);
+  display: grid; place-items: center; font-size: 19px;
+}
+.ll-feat-t { font-size: 13.5px; font-weight: 700; }
+.ll-feat-s { font-size: 11.5px; color: rgba(255,255,255,.7); margin-top: 1px; }
+.ll-foot { font-size: 11.5px; color: rgba(255,255,255,.6); position: relative; }
+
+.login-right {
+  flex: 1;
+  background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px;
+  transition: background-color .45s ease;
+}
+.lr-logo { font-family: var(--font-display); font-size: 26px; font-weight: 800; }
+.lr-logo em { font-style: normal; color: var(--green); }
+.lr-greet { font-size: 13.5px; color: var(--text-mut); margin: 8px 0 30px; font-weight: 500; }
+.kakao-btn {
+  width: 320px; max-width: 80vw; height: 50px;
+  border: none; border-radius: 13px;
+  background: #fee500; color: #191919;
+  font-family: var(--font-body); font-size: 14px; font-weight: 800;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.kakao-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(254,229,0,.6); }
+.lr-terms { width: 320px; max-width: 80vw; margin-top: 15px; font-size: 11px; color: var(--text-soft); text-align: center; line-height: 1.7; }
+.lr-terms u { cursor: pointer; }
+.lr-alt { margin-top: 22px; font-size: 12px; color: var(--text-soft); }
+.lr-alt b { color: var(--green); cursor: pointer; font-weight: 700; }
+
+/* ============================================================
+   화면 2 — 온보딩
+   ============================================================ */
+#screen-onboard { flex-direction: column; align-items: center; overflow-y: auto; padding: 38px 24px; }
+.ob-steps { display: flex; align-items: center; gap: 0; margin-bottom: 26px; }
+.ob-step { display: flex; align-items: center; gap: 8px; }
+.ob-sc {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-size: 13px; font-weight: 800;
+  background: var(--surface-3); color: var(--text-soft);
+  border: 1.5px solid var(--border);
+  transition: all .25s ease;
+}
+.ob-sl { font-size: 12.5px; font-weight: 600; color: var(--text-soft); transition: color .25s ease; }
+.ob-step.active .ob-sc { background: var(--green); border-color: var(--green); color: #fff; }
+.ob-step.active .ob-sl { color: var(--text); }
+.ob-step.done .ob-sc { background: var(--green-soft); border-color: transparent; color: var(--green); }
+.ob-line { width: 46px; height: 2px; background: var(--border); margin: 0 12px; border-radius: 2px; }
+.ob-line.done { background: var(--green); }
+
+.ob-card {
+  width: 460px; max-width: 94vw;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.ob-pane { display: none; }
+.ob-pane.active { display: block; animation: fadeUp .45s cubic-bezier(.2,.75,.2,1) both; }
+.ob-top { padding: 26px 26px 6px; }
+.ob-ic {
+  width: 46px; height: 46px; border-radius: 14px;
+  background: var(--green-soft); color: var(--green);
+  display: grid; place-items: center; font-size: 23px;
+  margin-bottom: 13px;
+}
+.ob-title { font-family: var(--font-display); font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
+.ob-sub { font-size: 12.5px; color: var(--text-mut); margin-top: 5px; line-height: 1.6; }
+.ob-form { padding: 18px 26px 6px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  font-size: 12px; font-weight: 600;
+  padding: 7px 12px; border-radius: 10px;
+  background: var(--surface-2); border: 1.5px solid var(--border);
+  color: var(--text-mut); cursor: pointer;
+  transition: all .14s ease;
+}
+.chip:hover { border-color: var(--green); }
+.chip.on { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+.ob-foot { padding: 14px 26px 22px; }
+
+.code-strip {
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(135deg, var(--green), var(--green-deep));
+  border-radius: 16px; padding: 18px 20px; color: #fff;
+  position: relative; overflow: hidden;
+}
+.code-strip::before {
+  content: ""; position: absolute; width: 130px; height: 130px;
+  right: -40px; top: -50px;
+  background: radial-gradient(circle, rgba(255,255,255,.28), transparent 70%);
+}
+.code-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.78); display: flex; align-items: center; gap: 5px; }
+.code-val { font-family: var(--font-display); font-size: 30px; font-weight: 800; letter-spacing: .06em; margin: 4px 0 3px; }
+.code-exp { font-size: 11px; color: rgba(255,255,255,.7); display: flex; align-items: center; gap: 4px; }
+.copy-btn {
+  margin-left: auto; flex: 0 0 auto;
+  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.24);
+  color: #fff; border-radius: 10px; padding: 9px 13px;
+  font-family: var(--font-body); font-size: 12px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  transition: background-color .15s ease;
+}
+.copy-btn:hover { background: rgba(255,255,255,.28); }
+
+.ob-confetti {
+  background: linear-gradient(135deg, var(--green-bright), var(--green-deep));
+  padding: 22px; text-align: center; color: #fff;
+  position: relative; overflow: hidden;
+}
+.ob-confetti .ti { font-size: 30px; }
+.ob-confetti div { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.ob-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 16px; }
+.ob-sg { background: var(--surface-2); border: 1px solid var(--border-2); border-radius: 12px; padding: 11px 13px; }
+.ob-sg-l { font-size: 11px; color: var(--text-soft); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.ob-sg-v { font-size: 14px; font-weight: 700; margin-top: 4px; }
+.ob-feat { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
+.ob-feat-ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-size: 17px; flex: 0 0 auto; }
+.ob-feat-t { font-size: 13px; font-weight: 700; }
+.ob-feat-s { font-size: 11.5px; color: var(--text-soft); margin-top: 1px; }
+.ob-team-avs { display: flex; justify-content: center; margin-bottom: 12px; }
+.ob-team-avs .av { border: 3px solid var(--surface); margin-left: -10px; }
+.ob-team-avs .av:first-child { margin-left: 0; }
+
+/* ============================================================
+   화면 3 — 홈
+   ============================================================ */
+#screen-home { flex-direction: column; }
+.topnav {
+  height: 58px; flex: 0 0 58px;
+  display: flex; align-items: center;
+  padding: 0 24px; gap: 14px;
+  border-bottom: 1px solid var(--border-2);
+  background: var(--surface-2);
+}
+.tn-logo { font-family: var(--font-display); font-size: 18px; font-weight: 800; }
+.tn-logo em { font-style: normal; color: var(--green); }
+.tn-right { margin-left: auto; display: flex; align-items: center; gap: 9px; }
+.tn-icon {
+  width: 38px; height: 38px; border-radius: 11px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-mut); cursor: pointer; position: relative;
+  display: grid; place-items: center; font-size: 18px;
+  transition: transform .15s ease, color .15s ease;
+}
+.tn-icon:hover { transform: translateY(-2px); color: var(--text); }
+.tn-icon .dot { position: absolute; top: 8px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--coral); border: 2px solid var(--surface); }
+
+.home-body { flex: 1; overflow-y: auto; padding: 26px 28px 34px; }
+.greet-title { font-family: var(--font-display); font-size: 25px; font-weight: 800; letter-spacing: -.02em; }
+.greet-sub { font-size: 13px; color: var(--text-mut); margin-top: 4px; font-weight: 500; }
+.home-cols { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; margin-top: 22px; }
+
+.sec-head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 13px; }
+.sec-title { font-size: 15px; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 6px; }
+.sec-title .ti { color: var(--green); font-size: 17px; }
+.sec-count { font-size: 12px; color: var(--text-soft); font-weight: 500; }
+
+.groups-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.group-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 17px; padding: 16px 17px;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.group-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--green); }
+.gc-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+.gc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.gc-name { font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+.gc-avs { display: flex; align-items: center; margin-bottom: 13px; }
+.gc-avs .av { border: 2.5px solid var(--surface); margin-left: -8px; }
+.gc-avs .av:first-child { margin-left: 0; }
+.gc-more { font-size: 11px; font-weight: 600; color: var(--text-soft); margin-left: 7px; }
+.gc-contrib-row { display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 5px; }
+.gc-contrib-row .lbl { color: var(--text-soft); font-weight: 500; }
+.gc-contrib-row .val { font-weight: 700; font-family: var(--font-display); }
+.gc-bar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.gc-bar i { display: block; height: 100%; border-radius: 3px; }
+.gc-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border-2); }
+.gc-deadline { font-size: 11.5px; color: var(--text-soft); font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.new-group {
+  border: 1.5px dashed var(--border); border-radius: 17px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  cursor: pointer; color: var(--text-soft); min-height: 150px;
+  transition: border-color .15s ease, color .15s ease;
+}
+.new-group:hover { border-color: var(--green); color: var(--green); }
+.ng-circle { width: 38px; height: 38px; border-radius: 50%; background: var(--surface-3); display: grid; place-items: center; font-size: 20px; }
+.ng-txt { font-size: 12.5px; font-weight: 700; }
+
+.join-box { margin-top: 16px; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: 15px; padding: 15px 17px; }
+.join-label { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-bottom: 9px; }
+.join-label .ti { color: var(--green); }
+.join-row { display: flex; gap: 8px; }
+.join-input {
+  flex: 1; font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: 11px; padding: 9px 13px; color: var(--text);
+}
+.join-input:focus { outline: none; border-color: var(--green); }
+
+.task-row { display: flex; align-items: center; gap: 11px; padding: 10px 8px; border-radius: 12px; transition: background-color .15s ease; }
+.task-row + .task-row { box-shadow: inset 0 1px 0 var(--border-2); }
+.t-check {
+  width: 21px; height: 21px; flex: 0 0 auto;
+  border-radius: 7px; border: 2px solid var(--border);
+  background: var(--surface); cursor: pointer;
+  display: grid; place-items: center; color: #fff; font-size: 12px;
+  transition: all .15s ease;
+}
+.t-check:hover { border-color: var(--green); }
+.t-check.done { background: var(--green); border-color: var(--green); }
+.t-check .ti { opacity: 0; transition: opacity .15s ease; }
+.t-check.done .ti { opacity: 1; }
+.t-name { font-size: 13px; font-weight: 600; }
+.t-name.done { text-decoration: line-through; color: var(--text-soft); }
+.t-meta { display: flex; align-items: center; gap: 7px; margin-top: 3px; }
+.t-group { font-size: 10.5px; font-weight: 600; color: var(--text-soft); background: var(--surface-3); padding: 1px 7px; border-radius: 5px; }
+.t-due { font-size: 11px; font-weight: 700; }
+.due-red { color: var(--coral); } .due-amber { color: var(--amber); } .due-soft { color: var(--text-soft); }
+
+.activity-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.act-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.act-body { flex: 1; font-size: 12px; color: var(--text-mut); }
+.act-body b { color: var(--text); font-weight: 700; }
+.act-time { font-size: 10.5px; color: var(--text-soft); flex: 0 0 auto; }
+
+.meet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+.meet {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 15px 16px; cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.meet:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--green); }
+.meet.live { border-color: rgba(240,102,79,.4); background: linear-gradient(180deg, var(--coral-soft), var(--surface) 60%); }
+.meet-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+.date-chip { width: 42px; height: 46px; border-radius: 11px; background: var(--surface-3); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.date-chip .d { font-family: var(--font-display); font-size: 18px; font-weight: 800; line-height: 1; }
+.date-chip .m { font-size: 9px; font-weight: 600; color: var(--text-soft); margin-top: 2px; }
+.meet.soon .date-chip { background: var(--green-soft); }
+.meet.soon .date-chip .d, .meet.soon .date-chip .m { color: var(--green); }
+.meet-title { font-size: 13.5px; font-weight: 700; margin-bottom: 6px; letter-spacing: -.01em; }
+.meet-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px; color: var(--text-mut); font-weight: 500; }
+.meet-meta span { display: flex; align-items: center; gap: 4px; }
+.meet-foot { margin-top: 12px; }
+
+/* ============================================================
+   화면 4 — 대시보드 (앱 셸)
+   ============================================================ */
+#screen-dashboard { }
+.sidebar {
+  width: 238px; flex: 0 0 238px;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border-2);
+  padding: 16px 14px; display: flex; flex-direction: column;
+}
+.sb-back {
+  font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
+  color: var(--text-soft); background: transparent; border: none; cursor: pointer;
+  display: flex; align-items: center; gap: 5px; padding: 4px 6px; margin-bottom: 12px;
+  transition: color .15s ease;
+}
+.sb-back:hover { color: var(--green); }
+.sb-team {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 13px; padding: 10px 11px; margin-bottom: 16px;
+}
+.sb-team-badge {
+  width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto;
+  background: linear-gradient(150deg, var(--green-bright), var(--green-deep));
+  display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 14px;
+  font-family: var(--font-display);
+}
+.sb-team-name { font-size: 13px; font-weight: 700; }
+.sb-team-sub { font-size: 10.5px; color: var(--text-soft); font-weight: 500; }
+.sb-sec { font-size: 10px; font-weight: 700; letter-spacing: .11em; color: var(--text-soft); text-transform: uppercase; padding: 6px 9px 5px; }
+.nav-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 10px; border-radius: 11px;
+  font-size: 13px; font-weight: 600; color: var(--text-mut);
+  cursor: pointer; position: relative;
+  transition: background-color .15s ease, color .15s ease;
+}
+.nav-item .ti { font-size: 18px; }
+.nav-item:hover { background: var(--surface-3); color: var(--text); }
+.nav-item.active { background: var(--green-soft); color: var(--green); }
+.nav-item.active::before { content: ""; position: absolute; left: -14px; top: 50%; transform: translateY(-50%); width: 4px; height: 18px; background: var(--green); border-radius: 0 4px 4px 0; }
+.nav-item .nbadge { margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--surface-3); color: var(--text-mut); }
+.nav-item.active .nbadge { background: var(--green); color: #fff; }
+.nbadge.live { background: var(--coral); color: #fff; }
+
+.sb-members { margin-top: 18px; }
+.sb-mrow { display: flex; align-items: center; gap: 9px; padding: 6px 8px; font-size: 12px; font-weight: 600; }
+.me-tag { font-size: 9.5px; font-weight: 700; background: var(--green-soft); color: var(--green); padding: 1px 6px; border-radius: 5px; }
+.sb-spacer { flex: 1; }
+.sb-user { display: flex; align-items: center; gap: 9px; padding: 8px; border: 1px solid var(--border-2); border-radius: 12px; background: var(--surface); }
+.sb-user-name { font-size: 12.5px; font-weight: 700; }
+.sb-user-role { font-size: 10.5px; color: var(--text-soft); }
+
+.main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.main-top {
+  height: 58px; flex: 0 0 58px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 24px; border-bottom: 1px solid var(--border-2);
+}
+.main-title { font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+.main-content { flex: 1; overflow-y: auto; padding: 22px 24px 30px; }
+
+.dpage { display: none; }
+.dpage.active { display: block; animation: fadeUp .5s cubic-bezier(.2,.75,.2,1) both; }
+
+/* 대시보드 페이지 */
+.alert-bar {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--coral-soft); color: var(--coral);
+  border-radius: 13px; padding: 11px 15px;
+  font-size: 12.5px; font-weight: 600; margin-bottom: 16px;
+}
+.alert-bar .ti { font-size: 17px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin-bottom: 16px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 15px 16px; }
+.stat-lbl { font-size: 11.5px; color: var(--text-soft); font-weight: 600; }
+.stat-val { font-family: var(--font-display); font-size: 27px; font-weight: 800; letter-spacing: -.01em; margin: 4px 0 2px; }
+.stat-sub { font-size: 11px; color: var(--text-soft); }
+.dash-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-bottom: 14px; }
+.dash-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.contrib-row { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
+.contrib-row + .contrib-row { box-shadow: inset 0 1px 0 var(--border-2); }
+.c-name { font-size: 12.5px; font-weight: 600; width: 62px; flex: 0 0 auto; }
+.c-bar { flex: 1; height: 9px; border-radius: 5px; background: var(--track); overflow: hidden; }
+.c-bar i { display: block; height: 100%; border-radius: 5px; width: 0; transition: width 1s cubic-bezier(.2,.8,.2,1); }
+.c-pct { font-family: var(--font-display); font-size: 13px; font-weight: 700; width: 38px; text-align: right; flex: 0 0 auto; }
+.c-task { font-size: 11px; color: var(--text-soft); width: 64px; text-align: right; flex: 0 0 auto; font-weight: 500; }
+
+.mini-meeting { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 15px 16px; }
+.task-mini { display: flex; align-items: center; gap: 9px; padding: 7px 0; font-size: 12px; }
+.task-mini + .task-mini { box-shadow: inset 0 1px 0 var(--border-2); }
+.chk-mini { width: 16px; height: 16px; border-radius: 5px; border: 2px solid var(--border); flex: 0 0 auto; display: grid; place-items: center; color: #fff; font-size: 9px; }
+.chk-mini.done { background: var(--green); border-color: var(--green); }
+.meeting-mini { padding: 8px 0; }
+.meeting-mini + .meeting-mini { box-shadow: inset 0 1px 0 var(--border-2); }
+.mm-top { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+.mm-meta { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
+
+/* 회의 관리 페이지 */
+.meeting-layout { display: flex; height: calc(100vh - 58px - 52px); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.msidebar { width: 230px; flex: 0 0 230px; border-right: 1px solid var(--border-2); background: var(--surface-2); display: flex; flex-direction: column; }
+.msb-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 13px; border-bottom: 1px solid var(--border-2); }
+.msb-head span { font-size: 13px; font-weight: 700; }
+.msb-list { padding: 8px; overflow-y: auto; }
+.msb-group { font-size: 10px; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .07em; padding: 8px 7px 5px; }
+.mcard { padding: 10px 11px; border-radius: 11px; cursor: pointer; border: 1px solid transparent; transition: background-color .14s ease; }
+.mcard:hover { background: var(--surface-3); }
+.mcard.sel { background: var(--green-soft); border-color: rgba(29,158,117,.25); }
+.mcard-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.mcard-name { font-size: 12.5px; font-weight: 700; }
+.mcard-meta { font-size: 10.5px; color: var(--text-soft); margin-top: 3px; }
+.spill { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.spill-live { background: var(--coral-soft); color: var(--coral); }
+.spill-soon { background: var(--blue-soft); color: var(--blue); }
+.spill-done { background: var(--surface-3); color: var(--text-soft); }
+
+.mdetail { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--surface); }
+.mdetail-head { padding: 16px 20px 0; }
+.mdh-top { display: flex; align-items: center; justify-content: space-between; }
+.mdh-title { font-family: var(--font-display); font-size: 17px; font-weight: 800; }
+.mdh-meta { display: flex; gap: 14px; font-size: 11.5px; color: var(--text-mut); font-weight: 500; margin-top: 7px; }
+.mdh-meta span { display: flex; align-items: center; gap: 4px; }
+.tabs { display: flex; gap: 3px; padding: 0 20px; margin-top: 13px; border-bottom: 1px solid var(--border-2); }
+.tab {
+  font-size: 12.5px; font-weight: 600; color: var(--text-soft);
+  padding: 9px 13px; cursor: pointer; position: relative;
+  transition: color .14s ease;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--green); }
+.tab.active::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2.5px; background: var(--green); border-radius: 2px; }
+.tab-body { flex: 1; overflow-y: auto; padding: 18px 20px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeUp .4s ease both; }
+
+.panel-label { font-size: 11px; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 11px; }
+.ag-item { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border-2); margin-bottom: 8px; }
+.ag-item.cur { background: var(--green-soft); border-color: rgba(29,158,117,.3); }
+.ag-num { width: 22px; height: 22px; border-radius: 7px; background: var(--surface-3); display: grid; place-items: center; font-size: 11px; font-weight: 800; font-family: var(--font-display); flex: 0 0 auto; }
+.ag-item.cur .ag-num { background: var(--green); color: #fff; }
+.ag-text { font-size: 12.5px; font-weight: 600; flex: 1; }
+.ag-prog { width: 100px; height: 5px; border-radius: 3px; background: var(--track); overflow: hidden; flex: 0 0 auto; }
+.ag-prog i { display: block; height: 100%; background: var(--green); border-radius: 3px; }
+.ag-time { font-size: 11px; color: var(--text-soft); font-weight: 600; width: 34px; text-align: right; flex: 0 0 auto; }
+
+.speak-row { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
+.speak-row .av { flex: 0 0 auto; }
+.speak-name { font-size: 12.5px; font-weight: 600; width: 56px; flex: 0 0 auto; }
+.speak-bar { flex: 1; height: 22px; border-radius: 7px; background: var(--track); overflow: hidden; }
+.speak-bar i { display: block; height: 100%; border-radius: 7px; width: 0; transition: width 1.1s cubic-bezier(.2,.8,.2,1); display: flex; align-items: center; }
+.speak-pct { font-family: var(--font-display); font-size: 12px; font-weight: 700; width: 64px; text-align: right; flex: 0 0 auto; }
+
+.dec-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; }
+.dec-item + .dec-item { box-shadow: inset 0 1px 0 var(--border-2); }
+.dec-ic { width: 22px; height: 22px; border-radius: 7px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; font-size: 13px; flex: 0 0 auto; }
+.dec-text { font-size: 12.5px; font-weight: 500; flex: 1; line-height: 1.5; }
+.summary-box {
+  border-radius: 14px; padding: 22px;
+  background: var(--green-soft); border: 1px dashed rgba(29,158,117,.4);
+  font-size: 12.5px; color: var(--text-mut);
+  display: flex; align-items: center; gap: 9px;
+}
+.summary-box .ti { color: var(--green); font-size: 19px; }
+
+/* 태스크 페이지 */
+.task-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; }
+.view-toggle { display: flex; background: var(--surface-3); border-radius: 10px; padding: 3px; gap: 2px; }
+.vt {
+  font-family: var(--font-body); font-size: 12px; font-weight: 600;
+  color: var(--text-soft); background: transparent; border: none; cursor: pointer;
+  padding: 6px 12px; border-radius: 8px; display: flex; align-items: center; gap: 5px;
+  transition: all .14s ease;
+}
+.vt.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.prog-strip { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: 12px 16px; margin-bottom: 14px; }
+.prog-strip .lbl { font-size: 12px; font-weight: 600; color: var(--text-mut); flex: 0 0 auto; }
+.prog-bg { flex: 1; height: 8px; border-radius: 5px; background: var(--track); overflow: hidden; }
+.prog-fill { height: 100%; background: linear-gradient(90deg, var(--green-bright), var(--green)); border-radius: 5px; width: 0; transition: width 1s cubic-bezier(.2,.8,.2,1); }
+.prog-strip .num { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--text-soft); flex: 0 0 auto; }
+
+.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+.board-col { background: var(--surface-2); border: 1px solid var(--border-2); border-radius: 15px; padding: 11px; }
+.col-head { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; padding: 2px; }
+.col-dot { width: 8px; height: 8px; border-radius: 50%; }
+.col-title { font-size: 12.5px; font-weight: 700; }
+.col-cnt { margin-left: auto; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--text-mut); }
+.tcard { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; margin-bottom: 8px; transition: transform .14s ease, box-shadow .14s ease; }
+.tcard:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.tcard.danger { border-left: 3px solid var(--coral); }
+.tcard.warn { border-left: 3px solid var(--amber); }
+.tcard.done-card { opacity: .62; }
+.tc-title { font-size: 12.5px; font-weight: 600; margin-bottom: 9px; }
+.tc-title.done { text-decoration: line-through; color: var(--text-soft); }
+.tc-foot { display: flex; align-items: center; justify-content: space-between; }
+.tc-who { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-mut); }
+.tc-status {
+  font-family: var(--font-body); font-size: 10.5px; font-weight: 700;
+  border: none; border-radius: 7px; padding: 3px 7px; cursor: pointer;
+}
+.s-todo { background: var(--surface-3); color: var(--text-mut); }
+.s-inprog { background: var(--blue-soft); color: var(--blue); }
+.s-done { background: var(--green-soft); color: var(--green); }
+.add-col { width: 100%; border: 1.5px dashed var(--border); background: transparent; color: var(--text-soft); border-radius: 11px; padding: 9px; font-family: var(--font-body); font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all .14s ease; }
+.add-col:hover { border-color: var(--green); color: var(--green); }
+
+.list-view { display: none; }
+.lrow { display: flex; align-items: center; gap: 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 11px 14px; margin-bottom: 8px; }
+.lrow.danger { border-left: 3px solid var(--coral); }
+.lrow.warn { border-left: 3px solid var(--amber); }
+.lrow-title { flex: 1; font-size: 12.5px; font-weight: 600; }
+.lrow-title.done { text-decoration: line-through; color: var(--text-soft); }
+.lrow-due { font-size: 11px; font-weight: 700; width: 50px; text-align: right; }
+
+/* 리포트 페이지 */
+.report-wrap { max-width: 720px; margin: 0 auto; }
+.report-banner {
+  border-radius: 18px; padding: 24px 26px; margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  color: #fff; position: relative; overflow: hidden;
+  background:
+    radial-gradient(360px 260px at 88% -30%, #45dba8 0%, transparent 70%),
+    linear-gradient(130deg, #1aa57c, #0e6650);
+}
+.report-banner::before {
+  content: ""; position: absolute; inset: 0; opacity: .5; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+.rb-title { font-family: var(--font-display); font-size: 20px; font-weight: 800; position: relative; }
+.rb-sub { font-size: 12.5px; color: rgba(255,255,255,.8); margin-top: 3px; position: relative; }
+.rb-meta { font-size: 11px; color: rgba(255,255,255,.62); margin-top: 8px; position: relative; }
+.rb-score-lbl { font-size: 11.5px; color: rgba(255,255,255,.72); text-align: right; position: relative; }
+.rb-score { font-family: var(--font-display); font-size: 46px; font-weight: 800; line-height: 1; text-align: right; position: relative; }
+
+.mrc { padding: 14px 0; }
+.mrc + .mrc { box-shadow: inset 0 1px 0 var(--border-2); }
+.mrc-head { display: flex; align-items: center; gap: 11px; margin-bottom: 11px; }
+.mrc-name { font-size: 13px; font-weight: 700; }
+.mrc-role { font-size: 11px; color: var(--text-soft); }
+.mrc-score { margin-left: auto; font-family: var(--font-display); font-size: 19px; font-weight: 800; }
+.mrc-score.hi { color: var(--green); } .mrc-score.md { color: var(--amber); } .mrc-score.lo { color: var(--coral); }
+.mrc-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+.mrc-stat { background: var(--surface-2); border-radius: 9px; padding: 8px 10px; }
+.mrc-stat-l { font-size: 10px; color: var(--text-soft); font-weight: 600; }
+.mrc-stat-v { font-family: var(--font-display); font-size: 14px; font-weight: 700; margin-top: 2px; }
+.mrc-bar { height: 7px; border-radius: 4px; background: var(--track); overflow: hidden; }
+.mrc-bar i { display: block; height: 100%; border-radius: 4px; }
+
+.radar-wrap { display: flex; align-items: center; gap: 22px; padding: 6px 8px 10px; }
+.radar-legend { display: flex; flex-direction: column; gap: 9px; }
+.rl-item { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; }
+.rl-swatch { width: 13px; height: 13px; border-radius: 4px; }
+
+.ms-row { display: flex; gap: 11px; padding: 12px 0; }
+.ms-row + .ms-row { box-shadow: inset 0 1px 0 var(--border-2); }
+.ms-num { width: 24px; height: 24px; border-radius: 8px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; font-family: var(--font-display); font-size: 12px; font-weight: 800; flex: 0 0 auto; }
+.ms-title { font-size: 13px; font-weight: 700; }
+.ms-title span { font-size: 10.5px; color: var(--text-soft); font-weight: 400; }
+.ms-body { font-size: 12px; color: var(--text-mut); margin-top: 3px; line-height: 1.5; }
+.ms-meta { font-size: 11px; color: var(--text-soft); margin-top: 4px; }
+
+/* ============================================================
+   모달 + 토스트
+   ============================================================ */
+.modal-bg {
+  position: absolute; inset: 0; z-index: 100;
+  background: rgba(15,25,20,.5);
+  backdrop-filter: blur(3px);
+  display: none; align-items: center; justify-content: center; padding: 30px;
+}
+.modal-bg.open { display: flex; animation: fadeUp .2s ease both; }
+.modal {
+  width: 420px; max-width: 100%;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 22px; box-shadow: var(--shadow-lg);
+  animation: modalIn .28s cubic-bezier(.2,.9,.3,1) both;
+}
+@keyframes modalIn { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
+.modal-ttl { font-family: var(--font-display); font-size: 17px; font-weight: 800; display: flex; align-items: center; }
+.modal-close { margin-left: auto; width: 28px; height: 28px; border-radius: 8px; border: none; background: var(--surface-3); color: var(--text-mut); font-size: 17px; cursor: pointer; }
+.modal-close:hover { color: var(--text); }
+.modal-sub { font-size: 12px; color: var(--text-soft); margin: 5px 0 16px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+.type-pick { display: flex; gap: 8px; }
+.type-opt { flex: 1; padding: 11px 13px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface-2); cursor: pointer; transition: all .14s ease; }
+.type-opt.on { border-color: var(--green); background: var(--green-soft); }
+.type-opt-t { font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+.type-opt-s { font-size: 11px; color: var(--text-soft); margin-top: 3px; }
+
+.toast {
+  position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(20px);
+  z-index: 200;
+  background: var(--text); color: var(--bg);
+  font-size: 12.5px; font-weight: 600;
+  padding: 11px 18px; border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+  display: flex; align-items: center; gap: 7px;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast .ti { color: var(--green-bright); font-size: 16px; }
+
+@media (max-width: 1080px) {
+  .home-cols, .dash-grid, .dash-grid2 { grid-template-columns: 1fr; }
+  .stats-grid, .groups-grid, .meet-grid, .board { grid-template-columns: 1fr 1fr; }
+}
+
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <div class="app-body">
+
+  <!-- ════════════ 화면 1 — 로그인 ════════════ -->
+  <div id="screen-login" class="screen active">
+    <div class="login-left">
+      <div class="ll-blob" style="width:300px;height:300px;top:-110px;right:-90px;"></div>
+      <div class="ll-blob" style="width:180px;height:180px;bottom:40px;left:-70px;"></div>
+      <div class="reveal" style="animation-delay:.05s">
+        <div class="ll-logo">무임<em>하차</em></div>
+        <div class="ll-tag">팀플 기여도 관리 서비스</div>
+      </div>
+      <div class="ll-mid">
+        <div class="ll-headline reveal" style="animation-delay:.12s">"내가 제일<br>열심히 했다"<br><span>이제 증명하세요.</span></div>
+        <div class="ll-sub reveal" style="animation-delay:.18s">발언 시간, 태스크 완료율, 회의 참석률까지<br>데이터로 기여도를 투명하게 관리합니다.</div>
+        <div class="ll-feat reveal" style="animation-delay:.24s">
+          <div class="ll-feat-ic"><i class="ti ti-chart-bar"></i></div>
+          <div><div class="ll-feat-t">실시간 기여도 현황</div><div class="ll-feat-s">발언 · 태스크 · 참석 종합 집계</div></div>
+        </div>
+        <div class="ll-feat reveal" style="animation-delay:.3s">
+          <div class="ll-feat-ic"><i class="ti ti-file-export"></i></div>
+          <div><div class="ll-feat-t">교수 제출용 리포트</div><div class="ll-feat-s">PDF 1클릭 출력</div></div>
+        </div>
+        <div class="ll-feat reveal" style="animation-delay:.36s">
+          <div class="ll-feat-ic"><i class="ti ti-alert-triangle"></i></div>
+          <div><div class="ll-feat-t">무임승차 자동 감지</div><div class="ll-feat-s">기여도 10% 미만 시 경보 발송</div></div>
+        </div>
+      </div>
+      <div class="ll-foot reveal" style="animation-delay:.42s">팀원 초대 후 바로 사용 · 별도 설치 없음</div>
+    </div>
+
+    <div class="login-right">
+      <div class="lr-logo reveal" style="animation-delay:.1s">무임<em>하차</em></div>
+      <div class="lr-greet reveal" style="animation-delay:.16s">카카오 계정으로 간편하게 시작하세요.</div>
+      <button class="kakao-btn reveal" style="animation-delay:.22s" onclick="goTo('screen-home')">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="#191919"><path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.578 1.523 4.84 3.836 6.258-.168.594-.607 2.152-.695 2.484-.109.406.148.4.313.293.129-.086 2.047-1.395 2.875-1.957.527.074 1.07.113 1.621.113C16.523 17.691 22 14.214 22 10.5S17.523 3 12 3z"/></svg>
+        카카오로 시작하기
+      </button>
+      <div class="lr-terms reveal" style="animation-delay:.28s">로그인 시 <u>이용약관</u> 및 <u>개인정보처리방침</u>에 동의합니다.</div>
+      <div class="lr-alt reveal" style="animation-delay:.34s">처음이신가요? <b onclick="goTo('screen-home')">둘러보기</b></div>
+    </div>
+  </div>
+
+  <!-- ════════════ 화면 2 — 온보딩 ════════════ -->
+  <div id="screen-onboard" class="screen scroll">
+    <div class="ob-steps">
+      <div class="ob-step active" id="obs-0"><div class="ob-sc">1</div><span class="ob-sl">그룹 생성</span></div>
+      <div class="ob-line" id="obl-0"></div>
+      <div class="ob-step" id="obs-1"><div class="ob-sc">2</div><span class="ob-sl">팀원 초대</span></div>
+      <div class="ob-line" id="obl-1"></div>
+      <div class="ob-step" id="obs-2"><div class="ob-sc">3</div><span class="ob-sl">시작</span></div>
+    </div>
+
+    <div class="ob-card">
+      <!-- STEP 1 -->
+      <div class="ob-pane active" id="ob-pane-0">
+        <div class="ob-top">
+          <div class="ob-ic"><i class="ti ti-users-group"></i></div>
+          <div class="ob-title">우리 팀 그룹을 만들어볼게요</div>
+          <div class="ob-sub">그룹 정보를 입력하고 다음 단계에서 팀원을 초대하세요.</div>
+        </div>
+        <div class="ob-form">
+          <div class="field">
+            <label class="field-label">그룹 이름</label>
+            <input class="input" id="ob-gname" placeholder="예) 캡스톤 팀플 B" maxlength="30" />
+            <div class="field-hint">한글·영문·숫자 포함 최대 30자</div>
+          </div>
+          <div class="field">
+            <label class="field-label">과목 유형 <span class="opt">(선택)</span></label>
+            <div class="chip-row" id="ob-chips">
+              <div class="chip" onclick="pickChip(this)">캡스톤 설계</div>
+              <div class="chip" onclick="pickChip(this)">전공 팀플</div>
+              <div class="chip" onclick="pickChip(this)">교양</div>
+              <div class="chip" onclick="pickChip(this)">스터디</div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label">마감일 <span class="opt">(선택)</span></label>
+              <input class="input" type="date" />
+            </div>
+            <div class="field">
+              <label class="field-label">최대 인원</label>
+              <select class="input"><option>2명</option><option>3명</option><option selected>4명</option><option>5명</option><option>6명 이상</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="ob-foot">
+          <button class="btn btn-primary btn-full" onclick="obNext(0)">팀원 초대 <i class="ti ti-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="ob-pane" id="ob-pane-1">
+        <div class="ob-top">
+          <div class="ob-ic"><i class="ti ti-user-plus"></i></div>
+          <div class="ob-title">팀원을 초대해요</div>
+          <div class="ob-sub">아래 초대코드를 팀원에게 공유하세요.</div>
+        </div>
+        <div class="ob-form">
+          <div class="code-strip">
+            <div>
+              <div class="code-label"><i class="ti ti-key"></i> 우리 팀 초대코드</div>
+              <div class="code-val" id="ob-code">QFT-728</div>
+              <div class="code-exp"><i class="ti ti-clock"></i> <span id="ob-expire">5월 26일까지 유효</span></div>
+            </div>
+            <button class="copy-btn" onclick="copyCode()"><i class="ti ti-copy"></i> 복사</button>
+          </div>
+          <div class="field-hint" style="margin-top:12px;line-height:1.7;">이 코드를 팀원에게 공유하면 바로 합류할 수 있어요. 그룹에 들어온 후에도 팀원을 초대할 수 있습니다.</div>
+        </div>
+        <div class="ob-foot">
+          <button class="btn btn-primary btn-full" onclick="obNext(1)">시작 <i class="ti ti-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="ob-pane" id="ob-pane-2">
+        <div class="ob-confetti">
+          <i class="ti ti-confetti"></i>
+          <div>준비 완료! 팀플을 시작해볼게요</div>
+        </div>
+        <div class="ob-top" style="text-align:center;">
+          <div class="ob-team-avs">
+            <div class="av a1 av-lg">김</div>
+            <div class="av a2 av-lg">이</div>
+            <div class="av a3 av-lg">박</div>
+            <div class="av a4 av-lg">최</div>
+          </div>
+          <div class="ob-title">캡스톤 팀플 B · 4명</div>
+          <div class="ob-sub">그룹이 만들어졌어요. 회의를 시작하고 기여도를 기록해보세요.</div>
+        </div>
+        <div class="ob-form">
+          <div class="ob-summary">
+            <div class="ob-sg"><div class="ob-sg-l"><i class="ti ti-users"></i> 팀원</div><div class="ob-sg-v">4명</div></div>
+            <div class="ob-sg"><div class="ob-sg-l"><i class="ti ti-key"></i> 초대코드</div><div class="ob-sg-v" id="ob-code2">QFT-728</div></div>
+            <div class="ob-sg"><div class="ob-sg-l"><i class="ti ti-calendar"></i> 마감일</div><div class="ob-sg-v">6월 14일</div></div>
+            <div class="ob-sg"><div class="ob-sg-l"><i class="ti ti-checklist"></i> 태스크</div><div class="ob-sg-v">0개</div></div>
+          </div>
+          <div class="panel-label">지금 바로 시작할 수 있어요</div>
+          <div class="ob-feat">
+            <div class="ob-feat-ic" style="background:var(--green-soft);color:var(--green);"><i class="ti ti-video"></i></div>
+            <div><div class="ob-feat-t">첫 회의 만들기</div><div class="ob-feat-s">아젠다 작성 · 발언 시간 측정 시작</div></div>
+          </div>
+          <div class="ob-feat">
+            <div class="ob-feat-ic" style="background:var(--blue-soft);color:var(--blue);"><i class="ti ti-checklist"></i></div>
+            <div><div class="ob-feat-t">태스크 등록</div><div class="ob-feat-s">담당자 지정 · 마감일 설정</div></div>
+          </div>
+          <div class="ob-feat">
+            <div class="ob-feat-ic" style="background:var(--amber-soft);color:var(--amber);"><i class="ti ti-chart-bar"></i></div>
+            <div><div class="ob-feat-t">기여도 리포트</div><div class="ob-feat-s">회의가 끝나면 자동 집계</div></div>
+          </div>
+        </div>
+        <div class="ob-foot">
+          <button class="btn btn-primary btn-full" onclick="enterGroup()"><i class="ti ti-rocket"></i> 대시보드로 이동</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ 화면 3 — 홈 ════════════ -->
+  <div id="screen-home" class="screen">
+    <div class="topnav">
+      <div class="tn-logo">무임<em>하차</em></div>
+      <div class="tn-right">
+        <button class="btn btn-primary btn-sm" onclick="startOnboarding()"><i class="ti ti-plus"></i> 새 그룹</button>
+        <button class="tn-icon"><span class="dot"></span><i class="ti ti-bell"></i></button>
+        <div class="av a1 av-md" style="cursor:pointer;">김</div>
+      </div>
+    </div>
+    <div class="home-body scroll">
+      <div class="reveal" style="animation-delay:.04s">
+        <div class="greet-title">안녕하세요, 김민준님 👋</div>
+        <div class="greet-sub">현재 3개 그룹에 참여 중이에요. 오늘 진행 중인 회의가 1개 있습니다.</div>
+      </div>
+
+      <div class="home-cols">
+        <div class="reveal" style="animation-delay:.1s">
+          <div class="sec-head">
+            <div class="sec-title"><i class="ti ti-users-group"></i> 내 그룹</div>
+            <span class="sec-count">3개 참여 중</span>
+          </div>
+          <div class="groups-grid">
+            <div class="group-card" onclick="enterGroup()">
+              <div class="gc-stripe" style="background:var(--green);"></div>
+              <div class="gc-top"><div class="gc-name">캡스톤 설계 팀 A</div><span class="badge b-green">캡스톤</span></div>
+              <div class="gc-avs">
+                <div class="av a1 av-sm">김</div><div class="av a2 av-sm">이</div>
+                <div class="av a3 av-sm">박</div><div class="av a4 av-sm">최</div>
+                <span class="gc-more">4명</span>
+              </div>
+              <div class="gc-contrib-row"><span class="lbl">내 기여도</span><span class="val" style="color:var(--green);">38%</span></div>
+              <div class="gc-bar"><i style="width:38%;background:var(--green);"></i></div>
+              <div class="gc-foot"><span class="gc-deadline"><i class="ti ti-clock"></i> 5월 14일 마감</span><span class="badge b-green">진행 중</span></div>
+            </div>
+
+            <div class="group-card" onclick="enterGroup()">
+              <div class="gc-stripe" style="background:var(--blue);"></div>
+              <div class="gc-top"><div class="gc-name">마케팅원론 조별과제</div><span class="badge b-blue">전공</span></div>
+              <div class="gc-avs">
+                <div class="av a1 av-sm">김</div><div class="av a3 av-sm">정</div><div class="av a2 av-sm">윤</div>
+                <span class="gc-more">3명</span>
+              </div>
+              <div class="gc-contrib-row"><span class="lbl">내 기여도</span><span class="val" style="color:var(--blue);">52%</span></div>
+              <div class="gc-bar"><i style="width:52%;background:var(--blue);"></i></div>
+              <div class="gc-foot"><span class="gc-deadline"><i class="ti ti-clock"></i> 5월 20일 마감</span><span class="badge b-blue">진행 중</span></div>
+            </div>
+
+            <div class="group-card" onclick="enterGroup()">
+              <div class="gc-stripe" style="background:var(--text-soft);"></div>
+              <div class="gc-top"><div class="gc-name">알고리즘 스터디</div><span class="badge b-gray">스터디</span></div>
+              <div class="gc-avs">
+                <div class="av a1 av-sm">김</div><div class="av a2 av-sm">이</div>
+                <div class="av a4 av-sm">한</div><div class="av a3 av-sm">강</div>
+                <span class="gc-more">+1</span>
+              </div>
+              <div class="gc-contrib-row"><span class="lbl">내 기여도</span><span class="val" style="color:var(--text-mut);">29%</span></div>
+              <div class="gc-bar"><i style="width:29%;background:var(--text-soft);"></i></div>
+              <div class="gc-foot"><span class="gc-deadline"><i class="ti ti-clock"></i> 상시</span><span class="badge b-gray">활동 중</span></div>
+            </div>
+
+            <div class="new-group" onclick="startOnboarding()">
+              <div class="ng-circle"><i class="ti ti-plus"></i></div>
+              <div class="ng-txt">새 그룹 만들기</div>
+            </div>
+          </div>
+
+          <div class="join-box">
+            <div class="join-label"><i class="ti ti-key"></i> 초대코드로 참가</div>
+            <div class="join-row">
+              <input class="join-input" id="join-code" placeholder="ABC-123" maxlength="7" oninput="fmtCode(this)" />
+              <button class="btn btn-primary" onclick="joinGroup()">참가하기</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="reveal" style="animation-delay:.16s">
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-head">
+              <span class="card-title"><i class="ti ti-checklist"></i> 내 태스크</span>
+              <span class="card-link" id="home-task-count">3개</span>
+            </div>
+            <div style="padding:2px 12px 12px;" id="home-tasks">
+              <div class="task-row">
+                <div class="t-check" onclick="toggleHomeTask(this)"><i class="ti ti-check"></i></div>
+                <div style="flex:1;">
+                  <div class="t-name">최종 슬라이드 디자인</div>
+                  <div class="t-meta"><span class="t-group">캡스톤 팀 A</span><span class="t-due due-red">내일 마감</span></div>
+                </div>
+              </div>
+              <div class="task-row">
+                <div class="t-check" onclick="toggleHomeTask(this)"><i class="ti ti-check"></i></div>
+                <div style="flex:1;">
+                  <div class="t-name">발표 스크립트 작성</div>
+                  <div class="t-meta"><span class="t-group">캡스톤 팀 A</span><span class="t-due due-amber">5월 11일</span></div>
+                </div>
+              </div>
+              <div class="task-row">
+                <div class="t-check" onclick="toggleHomeTask(this)"><i class="ti ti-check"></i></div>
+                <div style="flex:1;">
+                  <div class="t-name">4주차 알고리즘 풀이</div>
+                  <div class="t-meta"><span class="t-group">알고리즘 스터디</span><span class="t-due due-amber">5월 13일</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><span class="card-title"><i class="ti ti-activity"></i> 최근 활동</span></div>
+            <div style="padding:2px 14px 12px;">
+              <div class="activity-row"><div class="act-dot" style="background:var(--coral);"></div><div class="act-body"><b>박지호</b>님 태스크 2개 기한 초과</div><div class="act-time">10분 전</div></div>
+              <div class="activity-row"><div class="act-dot" style="background:var(--green);"></div><div class="act-body"><b>캡스톤 팀 A</b> 회의 진행 중</div><div class="act-time">1시간 전</div></div>
+              <div class="activity-row"><div class="act-dot" style="background:var(--amber);"></div><div class="act-body"><b>이서연</b>님이 액션아이템 완료</div><div class="act-time">어제</div></div>
+              <div class="activity-row"><div class="act-dot" style="background:var(--text-soft);"></div><div class="act-body"><b>알고리즘 스터디</b>에 강민재님 합류</div><div class="act-time">2일 전</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal" style="animation-delay:.22s;margin-top:18px;">
+        <div class="sec-head">
+          <div class="sec-title"><i class="ti ti-calendar-event"></i> 예정된 회의</div>
+          <span class="sec-count">3개</span>
+        </div>
+        <div class="meet-grid">
+          <div class="meet live" onclick="enterGroup()">
+            <div class="meet-top">
+              <span class="badge b-coral"><span class="live-dot"></span> 진행 중</span>
+              <span class="badge b-green">캡스톤 팀 A</span>
+            </div>
+            <div class="meet-title">발표 준비 회의</div>
+            <div class="meet-meta">
+              <span><i class="ti ti-calendar"></i> 오늘</span>
+              <span><i class="ti ti-clock"></i> 오후 3:00</span>
+              <span><i class="ti ti-users"></i> 4명</span>
+            </div>
+            <div class="meet-foot"><button class="btn btn-danger btn-sm btn-full"><i class="ti ti-arrow-right"></i> 회의 참여</button></div>
+          </div>
+
+          <div class="meet soon">
+            <div class="meet-top">
+              <div class="date-chip"><span class="d">11</span><span class="m">5월</span></div>
+              <span class="badge b-green">캡스톤 팀 A</span>
+            </div>
+            <div class="meet-title">최종 발표 리허설</div>
+            <div class="meet-meta">
+              <span><i class="ti ti-clock"></i> 오후 2:00</span>
+              <span><i class="ti ti-users"></i> 4명</span>
+              <span><i class="ti ti-list"></i> 아젠다 2</span>
+            </div>
+            <div class="meet-foot"><div class="btn btn-sm btn-full" style="cursor:default;"><i class="ti ti-calendar-plus"></i> 2일 후</div></div>
+          </div>
+
+          <div class="meet">
+            <div class="meet-top">
+              <div class="date-chip"><span class="d">13</span><span class="m">5월</span></div>
+              <span class="badge b-gray">알고리즘 스터디</span>
+            </div>
+            <div class="meet-title">4주차 알고리즘 풀이</div>
+            <div class="meet-meta">
+              <span><i class="ti ti-clock"></i> 오후 8:00</span>
+              <span><i class="ti ti-users"></i> 5명</span>
+              <span><i class="ti ti-list"></i> 아젠다 1</span>
+            </div>
+            <div class="meet-foot"><div class="btn btn-sm btn-full" style="cursor:default;"><i class="ti ti-calendar-plus"></i> 4일 후</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ 화면 4 — 대시보드 ════════════ -->
+  <div id="screen-dashboard" class="screen">
+    <aside class="sidebar">
+      <button class="sb-back" onclick="goTo('screen-home')"><i class="ti ti-arrow-left"></i> 내 그룹으로</button>
+      <div class="sb-team">
+        <div class="sb-team-badge">A</div>
+        <div>
+          <div class="sb-team-name">캡스톤 설계 팀 A</div>
+          <div class="sb-team-sub">팀원 4명 · 진행 중</div>
+        </div>
+      </div>
+      <div class="sb-sec">메뉴</div>
+      <div class="nav-item active" data-page="dash" onclick="navDash('dash')"><i class="ti ti-layout-dashboard"></i> 대시보드</div>
+      <div class="nav-item" data-page="meeting" onclick="navDash('meeting')"><i class="ti ti-video"></i> 회의 관리 <span class="nbadge live">LIVE</span></div>
+      <div class="nav-item" data-page="tasks" onclick="navDash('tasks')"><i class="ti ti-checklist"></i> 태스크 <span class="nbadge">7</span></div>
+      <div class="nav-item" data-page="report" onclick="navDash('report')"><i class="ti ti-chart-bar"></i> 기여도 리포트</div>
+
+      <div class="sb-members">
+        <div class="sb-sec">팀원</div>
+        <div class="sb-mrow"><div class="av a1 av-sm">김</div> 김민준 <span class="me-tag">나</span></div>
+        <div class="sb-mrow"><div class="av a2 av-sm">이</div> 이서연</div>
+        <div class="sb-mrow"><div class="av a3 av-sm">박</div> 박지호</div>
+        <div class="sb-mrow"><div class="av a4 av-sm">최</div> 최유나</div>
+      </div>
+
+      <div class="sb-spacer"></div>
+      <div class="sb-user">
+        <div class="av a1 av-md">김</div>
+        <div><div class="sb-user-name">김민준</div><div class="sb-user-role">팀장 · 소프트웨어학과</div></div>
+      </div>
+    </aside>
+
+    <div class="main-area">
+      <div class="main-top">
+        <div class="main-title" id="dash-title">대시보드</div>
+      </div>
+      <div class="main-content scroll">
+
+        <!-- 대시보드 -->
+        <div class="dpage active" id="dpage-dash">
+          <div class="alert-bar"><i class="ti ti-alert-triangle"></i> 박지호님의 태스크 2개가 내일 마감입니다. 아직 시작하지 않았어요.</div>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-lbl">총 회의</div><div class="stat-val">3</div><div class="stat-sub">이번 프로젝트</div></div>
+            <div class="stat-card"><div class="stat-lbl">태스크 진행률</div><div class="stat-val">64%</div><div class="stat-sub">7 / 11 완료</div></div>
+            <div class="stat-card"><div class="stat-lbl">다음 마감</div><div class="stat-val" style="font-size:20px;padding-top:8px;">내일</div><div class="stat-sub">발표 슬라이드 초안</div></div>
+            <div class="stat-card"><div class="stat-lbl">무임승차 경보</div><div class="stat-val" style="color:var(--coral);">1명</div><div class="stat-sub">박지호 · 기여도 8%</div></div>
+          </div>
+          <div class="dash-grid">
+            <div class="card">
+              <div class="card-head"><span class="card-title"><i class="ti ti-chart-bar"></i> 기여도 현황 <span class="live-dot" style="background:var(--green);"></span></span><span class="badge b-green">실시간</span></div>
+              <div style="padding:2px 18px 14px;">
+                <div class="contrib-row"><span class="c-name">김민준</span><span class="c-bar"><i data-w="38" style="background:var(--green);"></i></span><span class="c-pct">38%</span><span class="c-task" style="color:var(--green);">3/3 완료</span></div>
+                <div class="contrib-row"><span class="c-name">이서연</span><span class="c-bar"><i data-w="31" style="background:var(--blue);"></i></span><span class="c-pct">31%</span><span class="c-task">2/3 완료</span></div>
+                <div class="contrib-row"><span class="c-name">최유나</span><span class="c-bar"><i data-w="23" style="background:var(--pink);"></i></span><span class="c-pct">23%</span><span class="c-task">2/3 완료</span></div>
+                <div class="contrib-row"><span class="c-name">박지호</span><span class="c-bar"><i data-w="8" style="background:var(--coral);"></i></span><span class="c-pct" style="color:var(--coral);">8%</span><span class="c-task" style="color:var(--coral);">0/2 완료</span></div>
+              </div>
+            </div>
+            <div class="mini-meeting">
+              <div class="card-head" style="padding:0 0 10px;"><span class="card-title"><i class="ti ti-clock"></i> 진행 중 회의</span><span class="spill spill-live">🔴 진행</span></div>
+              <div style="font-size:14px;font-weight:700;margin-bottom:3px;">발표 준비 회의</div>
+              <div style="font-size:11.5px;color:var(--text-soft);">오늘 오후 3:00 · 아젠다 3개 · 4명 참석</div>
+              <div style="display:flex;gap:7px;margin:14px 0 4px;">
+                <div class="av a1 av-sm">김</div><div class="av a2 av-sm">이</div><div class="av a3 av-sm">박</div><div class="av a4 av-sm">최</div>
+              </div>
+              <button class="btn btn-primary btn-full" style="margin-top:12px;" onclick="navDash('meeting')"><i class="ti ti-arrow-right"></i> 회의 참여하기</button>
+            </div>
+          </div>
+          <div class="dash-grid2">
+            <div class="card">
+              <div class="card-head"><span class="card-title"><i class="ti ti-checklist"></i> 진행 중 태스크</span></div>
+              <div style="padding:2px 16px 14px;">
+                <div class="task-mini"><div class="chk-mini done"><i class="ti ti-check"></i></div><div style="flex:1;text-decoration:line-through;color:var(--text-soft);">시장 조사 보고서</div><span style="color:var(--text-soft);">민준</span></div>
+                <div class="task-mini"><div class="chk-mini"></div><div style="flex:1;">UI 와이어프레임</div><span style="color:var(--coral);font-weight:700;">내일</span></div>
+                <div class="task-mini"><div class="chk-mini"></div><div style="flex:1;">발표 슬라이드 초안</div><span style="color:var(--coral);font-weight:700;">내일</span></div>
+                <div class="task-mini"><div class="chk-mini"></div><div style="flex:1;">기술 스택 문서화</div><span style="color:var(--text-soft);">5/12</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><span class="card-title"><i class="ti ti-calendar"></i> 최근 회의</span></div>
+              <div style="padding:2px 16px 14px;">
+                <div class="meeting-mini"><div class="mm-top"><span>킥오프 회의</span><span class="badge b-green">완료</span></div><div class="mm-meta">5월 1일 · 38분</div></div>
+                <div class="meeting-mini"><div class="mm-top"><span>중간 점검</span><span class="badge b-green">완료</span></div><div class="mm-meta">5월 5일 · 52분</div></div>
+                <div class="meeting-mini"><div class="mm-top"><span>발표 준비 회의</span><span class="spill spill-live">진행 중</span></div><div class="mm-meta">오늘 오후 3시</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 회의 관리 -->
+        <div class="dpage" id="dpage-meeting">
+          <div class="meeting-layout">
+            <div class="msidebar">
+              <div class="msb-head"><span>회의 목록</span><button class="btn btn-primary btn-sm" onclick="openModal('modal-meeting')"><i class="ti ti-plus"></i></button></div>
+              <div class="msb-list scroll">
+                <div class="msb-group">진행 중</div>
+                <div class="mcard sel"><div class="mcard-top"><div class="mcard-name">발표 준비 회의</div><span class="spill spill-live">진행</span></div><div class="mcard-meta">오늘 3:00 · 4명 · 아젠다 3</div></div>
+                <div class="msb-group">예정</div>
+                <div class="mcard"><div class="mcard-top"><div class="mcard-name">최종 발표 리허설</div><span class="spill spill-soon">예정</span></div><div class="mcard-meta">5월 11일 2:00 · 4명</div></div>
+                <div class="msb-group">완료</div>
+                <div class="mcard"><div class="mcard-top"><div class="mcard-name">중간 점검 회의</div><span class="spill spill-done">완료</span></div><div class="mcard-meta">5월 5일 · 52분</div></div>
+                <div class="mcard"><div class="mcard-top"><div class="mcard-name">킥오프 회의</div><span class="spill spill-done">완료</span></div><div class="mcard-meta">5월 1일 · 38분</div></div>
+              </div>
+            </div>
+            <div class="mdetail">
+              <div class="mdetail-head">
+                <div class="mdh-top">
+                  <div class="mdh-title">발표 준비 회의</div>
+                  <button class="btn btn-danger btn-sm"><i class="ti ti-player-stop"></i> 회의 종료</button>
+                </div>
+                <div class="mdh-meta">
+                  <span><i class="ti ti-calendar"></i> 오늘 오후 3:00</span>
+                  <span><i class="ti ti-users"></i> 4명 참석</span>
+                  <span style="color:var(--coral);font-weight:700;"><i class="ti ti-clock"></i> <span id="m-elapsed">24:17</span></span>
+                </div>
+                <div class="tabs">
+                  <div class="tab active" onclick="switchTab('agenda',this)">아젠다</div>
+                  <div class="tab" onclick="switchTab('speak',this)">발언 기록</div>
+                  <div class="tab" onclick="switchTab('decision',this)">결정 사항</div>
+                  <div class="tab" onclick="switchTab('summary',this)">회의 요약</div>
+                </div>
+              </div>
+              <div class="tab-body scroll">
+                <div class="tab-panel active" id="tab-agenda">
+                  <div class="panel-label">아젠다 진행</div>
+                  <div class="ag-item cur"><div class="ag-num"><i class="ti ti-player-play-filled" style="font-size:9px;"></i></div><div class="ag-text">슬라이드 구성 검토</div><div class="ag-prog"><i style="width:72%;"></i></div><div class="ag-time">10분</div></div>
+                  <div class="ag-item"><div class="ag-num">2</div><div class="ag-text">발표 역할 분담 확정</div><div class="ag-prog"><i style="width:0%;"></i></div><div class="ag-time">10분</div></div>
+                  <div class="ag-item"><div class="ag-num">3</div><div class="ag-text">Q&amp;A 예상 질문 준비</div><div class="ag-prog"><i style="width:0%;"></i></div><div class="ag-time">15분</div></div>
+                  <button class="add-col" style="margin-top:4px;" onclick="openModal('modal-agenda')"><i class="ti ti-plus"></i> 아젠다 추가</button>
+                </div>
+                <div class="tab-panel" id="tab-speak">
+                  <div class="panel-label" style="display:flex;align-items:center;gap:6px;">발언 분포 <span class="live-dot" style="background:var(--green);"></span> <span style="margin-left:auto;text-transform:none;letter-spacing:0;color:var(--text-soft);font-weight:500;">총 24분 기준</span></div>
+                  <div class="speak-row"><div class="av a1 av-sm">김</div><span class="speak-name">김민준</span><span class="speak-bar"><i data-w="38" style="background:var(--av1);"></i></span><span class="speak-pct">9분 · 38%</span></div>
+                  <div class="speak-row"><div class="av a2 av-sm">이</div><span class="speak-name">이서연</span><span class="speak-bar"><i data-w="31" style="background:var(--av2);"></i></span><span class="speak-pct">7분 · 31%</span></div>
+                  <div class="speak-row"><div class="av a4 av-sm">최</div><span class="speak-name">최유나</span><span class="speak-bar"><i data-w="23" style="background:var(--av4);"></i></span><span class="speak-pct">6분 · 23%</span></div>
+                  <div class="speak-row"><div class="av a3 av-sm">박</div><span class="speak-name">박지호</span><span class="speak-bar"><i data-w="8" style="background:var(--coral);"></i></span><span class="speak-pct" style="color:var(--coral);">2분 · 8%</span></div>
+                  <div class="summary-box" style="margin-top:14px;background:var(--coral-soft);border-color:rgba(240,102,79,.4);"><i class="ti ti-alert-triangle" style="color:var(--coral);"></i> 박지호님의 발언 비중이 10% 미만입니다. 의견을 물어봐 주세요.</div>
+                </div>
+                <div class="tab-panel" id="tab-decision">
+                  <div class="panel-label" style="display:flex;align-items:center;">결정 사항 <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="openModal('modal-decision')"><i class="ti ti-plus"></i> 추가</button></div>
+                  <div id="dec-list">
+                    <div class="dec-item"><div class="dec-ic"><i class="ti ti-check"></i></div><div class="dec-text">슬라이드 총 12장, 민준이 최종 편집 담당</div></div>
+                    <div class="dec-item"><div class="dec-ic"><i class="ti ti-check"></i></div><div class="dec-text">발표 순서: 서연(서론) → 민준(본론) → 유나(결론)</div></div>
+                  </div>
+                </div>
+                <div class="tab-panel" id="tab-summary">
+                  <div class="summary-box"><i class="ti ti-sparkles"></i> 회의가 종료되면 AI가 자동으로 결정사항·액션아이템·회의록을 요약합니다.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 태스크 -->
+        <div class="dpage" id="dpage-tasks">
+          <div class="task-top">
+            <div class="view-toggle">
+              <button class="vt active" id="vt-board" onclick="switchView('board')"><i class="ti ti-layout-columns"></i> 보드</button>
+              <button class="vt" id="vt-list" onclick="switchView('list')"><i class="ti ti-list"></i> 목록</button>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-task')"><i class="ti ti-plus"></i> 태스크 추가</button>
+          </div>
+          <div class="prog-strip">
+            <span class="lbl">전체 진행률</span>
+            <div class="prog-bg"><div class="prog-fill" data-w="64"></div></div>
+            <span class="num">7 / 11 완료</span>
+          </div>
+
+          <div class="board" id="task-board">
+            <div class="board-col">
+              <div class="col-head"><span class="col-dot" style="background:var(--text-soft);"></span><span class="col-title">할 일</span><span class="col-cnt">4</span></div>
+              <div class="tcard danger"><div class="tc-title">UI 와이어프레임 작성</div><div class="tc-foot"><span class="tc-who"><span class="av a3 av-sm" style="width:20px;height:20px;font-size:9px;">박</span> 박지호</span><select class="tc-status s-todo"><option selected>할 일</option><option>진행 중</option><option>완료</option></select></div></div>
+              <div class="tcard danger"><div class="tc-title">발표 슬라이드 초안</div><div class="tc-foot"><span class="tc-who"><span class="av a3 av-sm" style="width:20px;height:20px;font-size:9px;">박</span> 박지호</span><select class="tc-status s-todo"><option selected>할 일</option><option>진행 중</option><option>완료</option></select></div></div>
+              <div class="tcard"><div class="tc-title">기술 스택 문서화</div><div class="tc-foot"><span class="tc-who"><span class="av a4 av-sm" style="width:20px;height:20px;font-size:9px;">최</span> 최유나</span><select class="tc-status s-todo"><option selected>할 일</option><option>진행 중</option><option>완료</option></select></div></div>
+              <div class="tcard warn"><div class="tc-title">발표 스크립트 작성</div><div class="tc-foot"><span class="tc-who"><span class="av a2 av-sm" style="width:20px;height:20px;font-size:9px;">이</span> 이서연</span><select class="tc-status s-todo"><option selected>할 일</option><option>진행 중</option><option>완료</option></select></div></div>
+              <button class="add-col" onclick="openModal('modal-task')"><i class="ti ti-plus"></i> 추가</button>
+            </div>
+            <div class="board-col">
+              <div class="col-head"><span class="col-dot" style="background:var(--blue);"></span><span class="col-title">진행 중</span><span class="col-cnt" style="background:var(--blue-soft);color:var(--blue);">3</span></div>
+              <div class="tcard"><div class="tc-title">경쟁사 분석 보고서</div><div class="tc-foot"><span class="tc-who"><span class="av a2 av-sm" style="width:20px;height:20px;font-size:9px;">이</span> 이서연</span><select class="tc-status s-inprog"><option>할 일</option><option selected>진행 중</option><option>완료</option></select></div></div>
+              <div class="tcard warn"><div class="tc-title">예상 Q&amp;A 5개 정리</div><div class="tc-foot"><span class="tc-who"><span class="av a4 av-sm" style="width:20px;height:20px;font-size:9px;">최</span> 최유나</span><select class="tc-status s-inprog"><option>할 일</option><option selected>진행 중</option><option>완료</option></select></div></div>
+              <div class="tcard"><div class="tc-title">최종 슬라이드 디자인</div><div class="tc-foot"><span class="tc-who"><span class="av a1 av-sm" style="width:20px;height:20px;font-size:9px;">김</span> 김민준</span><select class="tc-status s-inprog"><option>할 일</option><option selected>진행 중</option><option>완료</option></select></div></div>
+              <button class="add-col" onclick="openModal('modal-task')"><i class="ti ti-plus"></i> 추가</button>
+            </div>
+            <div class="board-col">
+              <div class="col-head"><span class="col-dot" style="background:var(--green);"></span><span class="col-title">완료</span><span class="col-cnt" style="background:var(--green-soft);color:var(--green);">4</span></div>
+              <div class="tcard done-card"><div class="tc-title done">시장 조사 보고서</div><div class="tc-foot"><span class="tc-who"><span class="av a1 av-sm" style="width:20px;height:20px;font-size:9px;">김</span> 김민준</span><select class="tc-status s-done"><option>할 일</option><option>진행 중</option><option selected>완료</option></select></div></div>
+              <div class="tcard done-card"><div class="tc-title done">팀 역할 정의서</div><div class="tc-foot"><span class="tc-who"><span class="av a1 av-sm" style="width:20px;height:20px;font-size:9px;">김</span> 김민준</span><select class="tc-status s-done"><option>할 일</option><option>진행 중</option><option selected>완료</option></select></div></div>
+              <div class="tcard done-card"><div class="tc-title done">유사 서비스 벤치마킹</div><div class="tc-foot"><span class="tc-who"><span class="av a2 av-sm" style="width:20px;height:20px;font-size:9px;">이</span> 이서연</span><select class="tc-status s-done"><option>할 일</option><option>진행 중</option><option selected>완료</option></select></div></div>
+              <div class="tcard done-card"><div class="tc-title done">킥오프 아젠다 준비</div><div class="tc-foot"><span class="tc-who"><span class="av a4 av-sm" style="width:20px;height:20px;font-size:9px;">최</span> 최유나</span><select class="tc-status s-done"><option>할 일</option><option>진행 중</option><option selected>완료</option></select></div></div>
+            </div>
+          </div>
+
+          <div class="list-view" id="task-list">
+            <div class="lrow danger"><div class="t-check" onclick="toggleLRow(this)"><i class="ti ti-check"></i></div><div class="lrow-title">UI 와이어프레임 작성</div><span class="badge b-gray">할 일</span><div class="av a3 av-sm">박</div><div class="lrow-due" style="color:var(--coral);">내일</div></div>
+            <div class="lrow danger"><div class="t-check" onclick="toggleLRow(this)"><i class="ti ti-check"></i></div><div class="lrow-title">발표 슬라이드 초안</div><span class="badge b-gray">할 일</span><div class="av a3 av-sm">박</div><div class="lrow-due" style="color:var(--coral);">내일</div></div>
+            <div class="lrow warn"><div class="t-check" onclick="toggleLRow(this)"><i class="ti ti-check"></i></div><div class="lrow-title">발표 스크립트 작성</div><span class="badge b-gray">할 일</span><div class="av a2 av-sm">이</div><div class="lrow-due" style="color:var(--amber);">5/11</div></div>
+            <div class="lrow"><div class="t-check" onclick="toggleLRow(this)"><i class="ti ti-check"></i></div><div class="lrow-title">경쟁사 분석 보고서</div><span class="badge b-blue">진행 중</span><div class="av a2 av-sm">이</div><div class="lrow-due due-soft">5/13</div></div>
+            <div class="lrow"><div class="t-check done" onclick="toggleLRow(this)"><i class="ti ti-check"></i></div><div class="lrow-title done">시장 조사 보고서</div><span class="badge b-green">완료</span><div class="av a1 av-sm">김</div><div class="lrow-due" style="color:var(--green);">완료</div></div>
+            <div class="lrow"><div class="t-check done" onclick="toggleLRow(this)"><i class="ti ti-check"></i></div><div class="lrow-title done">팀 역할 정의서</div><span class="badge b-green">완료</span><div class="av a1 av-sm">김</div><div class="lrow-due" style="color:var(--green);">완료</div></div>
+          </div>
+        </div>
+
+        <!-- 기여도 리포트 -->
+        <div class="dpage" id="dpage-report">
+          <div class="report-wrap">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+              <button class="btn btn-primary btn-sm" onclick="showToast('PDF 리포트를 저장했습니다')"><i class="ti ti-file-export"></i> PDF 저장 (제출용)</button>
+            </div>
+            <div class="report-banner">
+              <div>
+                <div class="rb-title">팀플 기여도 최종 리포트</div>
+                <div class="rb-sub">캡스톤 설계 팀 A · 2026년 5월</div>
+                <div class="rb-meta">총 회의 3회 · 태스크 11개 · 5/1 ~ 5/14</div>
+              </div>
+              <div><div class="rb-score-lbl">종합 달성률</div><div class="rb-score">64%</div></div>
+            </div>
+
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-head"><span class="card-title"><i class="ti ti-chart-bar"></i> 팀원별 기여도</span></div>
+              <div style="padding:0 18px 14px;">
+                <div class="mrc">
+                  <div class="mrc-head"><div class="av a1 av-lg">김</div><div><div class="mrc-name">김민준 <span style="font-size:10px;color:var(--text-soft);font-weight:400;">나</span></div><div class="mrc-role">팀장 · 기획/디자인</div></div><div class="mrc-score hi">38점</div></div>
+                  <div class="mrc-stats">
+                    <div class="mrc-stat"><div class="mrc-stat-l">발언 비중</div><div class="mrc-stat-v" style="color:var(--green);">38%</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">태스크</div><div class="mrc-stat-v">3/3</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">참석</div><div class="mrc-stat-v">3회</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">액션 완료</div><div class="mrc-stat-v">100%</div></div>
+                  </div>
+                  <div class="mrc-bar"><i style="width:38%;background:var(--green);"></i></div>
+                </div>
+                <div class="mrc">
+                  <div class="mrc-head"><div class="av a2 av-lg">이</div><div><div class="mrc-name">이서연</div><div class="mrc-role">조사/분석</div></div><div class="mrc-score hi">31점</div></div>
+                  <div class="mrc-stats">
+                    <div class="mrc-stat"><div class="mrc-stat-l">발언 비중</div><div class="mrc-stat-v" style="color:var(--blue);">31%</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">태스크</div><div class="mrc-stat-v">2/3</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">참석</div><div class="mrc-stat-v">3회</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">액션 완료</div><div class="mrc-stat-v">75%</div></div>
+                  </div>
+                  <div class="mrc-bar"><i style="width:31%;background:var(--blue);"></i></div>
+                </div>
+                <div class="mrc">
+                  <div class="mrc-head"><div class="av a4 av-lg">최</div><div><div class="mrc-name">최유나</div><div class="mrc-role">발표/문서</div></div><div class="mrc-score md">23점</div></div>
+                  <div class="mrc-stats">
+                    <div class="mrc-stat"><div class="mrc-stat-l">발언 비중</div><div class="mrc-stat-v" style="color:var(--pink);">23%</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">태스크</div><div class="mrc-stat-v">2/3</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">참석</div><div class="mrc-stat-v">2회</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">액션 완료</div><div class="mrc-stat-v">60%</div></div>
+                  </div>
+                  <div class="mrc-bar"><i style="width:23%;background:var(--pink);"></i></div>
+                </div>
+                <div class="mrc">
+                  <div class="mrc-head"><div class="av a3 av-lg">박</div><div><div class="mrc-name">박지호</div><div class="mrc-role">디자인</div></div><div class="mrc-score lo">8점 ⚠️</div></div>
+                  <div class="mrc-stats">
+                    <div class="mrc-stat"><div class="mrc-stat-l">발언 비중</div><div class="mrc-stat-v" style="color:var(--coral);">8%</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">태스크</div><div class="mrc-stat-v" style="color:var(--coral);">0/2</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">참석</div><div class="mrc-stat-v">3회</div></div>
+                    <div class="mrc-stat"><div class="mrc-stat-l">액션 완료</div><div class="mrc-stat-v" style="color:var(--coral);">0%</div></div>
+                  </div>
+                  <div class="mrc-bar"><i style="width:8%;background:var(--coral);"></i></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:14px;">
+              <div class="card-head"><span class="card-title"><i class="ti ti-chart-dots"></i> 기여도 레이더</span><span class="card-link" style="cursor:default;">김민준 vs 팀 평균</span></div>
+              <div class="radar-wrap">
+                <svg id="radar" width="240" height="240" viewBox="0 0 240 240"></svg>
+                <div class="radar-legend">
+                  <div class="rl-item"><span class="rl-swatch" style="background:var(--green);"></span> 김민준 (나)</div>
+                  <div class="rl-item"><span class="rl-swatch" style="background:var(--text-soft);"></span> 팀 평균</div>
+                  <div style="font-size:11px;color:var(--text-soft);line-height:1.7;margin-top:4px;">발언 · 태스크 · 참석 · 액션완료<br>4개 축 기준 정규화 점수</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><span class="card-title"><i class="ti ti-calendar"></i> 회의별 요약</span></div>
+              <div style="padding:0 18px 14px;">
+                <div class="ms-row"><div class="ms-num">1</div><div><div class="ms-title">킥오프 회의 <span>5/1 · 38분</span></div><div class="ms-body">팀 구성 및 역할 분담 확정. 전원 참석, 발언 비중 균등.</div><div class="ms-meta">결정 2개 · 액션 4개 완료</div></div></div>
+                <div class="ms-row"><div class="ms-num">2</div><div><div class="ms-title">중간 점검 회의 <span>5/5 · 52분</span></div><div class="ms-body">시장 조사 결과 공유. 박지호 미준비로 지연 발생.</div><div class="ms-meta">결정 3개 · 미결 2개</div></div></div>
+                <div class="ms-row"><div class="ms-num">3</div><div><div class="ms-title">발표 준비 회의 <span>오늘 · 진행 중</span></div><div class="ms-body">슬라이드 구성 검토 및 발표 역할 확정 중.</div><div class="ms-meta">결정 2개 · 진행 중</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /app-body -->
+
+  <!-- ════════════ 모달 ════════════ -->
+  <div class="modal-bg" id="modal-meeting" onclick="closeOut(event,this)">
+    <div class="modal">
+      <div class="modal-ttl">새 회의 만들기 <button class="modal-close" onclick="closeModal('modal-meeting')">×</button></div>
+      <div class="modal-sub">아젠다를 미리 작성하면 회의 효율이 올라갑니다.</div>
+      <div class="field"><label class="field-label">회의 이름</label><input class="input" placeholder="예) 중간 점검 회의" /></div>
+      <div class="field-row">
+        <div class="field"><label class="field-label">날짜</label><input class="input" type="date" /></div>
+        <div class="field"><label class="field-label">시간</label><input class="input" type="time" value="15:00" /></div>
+      </div>
+      <div class="field">
+        <label class="field-label">참여 유형</label>
+        <div class="type-pick">
+          <div class="type-opt on" onclick="pickType(this)"><div class="type-opt-t"><i class="ti ti-users"></i> 전체 참여</div><div class="type-opt-s">모든 팀원이 함께</div></div>
+          <div class="type-opt" onclick="pickType(this)"><div class="type-opt-t"><i class="ti ti-user-check"></i> 부분 참여</div><div class="type-opt-s">일부 팀원만</div></div>
+        </div>
+      </div>
+      <div class="field"><label class="field-label">아젠다 <span class="opt">(줄바꿈으로 구분)</span></label><textarea class="input" rows="3" placeholder="1. 진행 상황 공유&#10;2. 역할 재조정"></textarea></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('modal-meeting')">취소</button>
+        <button class="btn btn-primary" onclick="closeModal('modal-meeting');showToast('새 회의가 생성되었습니다')">회의 생성</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modal-task" onclick="closeOut(event,this)">
+    <div class="modal">
+      <div class="modal-ttl">태스크 추가 <button class="modal-close" onclick="closeModal('modal-task')">×</button></div>
+      <div class="modal-sub">담당자와 마감일을 지정하면 기여도에 자동 반영됩니다.</div>
+      <div class="field"><label class="field-label">태스크 이름</label><input class="input" placeholder="예) 발표 자료 수정" /></div>
+      <div class="field-row">
+        <div class="field"><label class="field-label">담당자</label><select class="input"><option>김민준</option><option>이서연</option><option>박지호</option><option>최유나</option><option>전원</option></select></div>
+        <div class="field"><label class="field-label">마감일</label><input class="input" type="date" /></div>
+      </div>
+      <div class="field"><label class="field-label">상태</label><select class="input"><option>할 일</option><option>진행 중</option><option>완료</option></select></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('modal-task')">취소</button>
+        <button class="btn btn-primary" onclick="closeModal('modal-task');showToast('태스크가 추가되었습니다')">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modal-decision" onclick="closeOut(event,this)">
+    <div class="modal">
+      <div class="modal-ttl">결정 사항 추가 <button class="modal-close" onclick="closeModal('modal-decision')">×</button></div>
+      <div class="modal-sub" style="margin-bottom:14px;"></div>
+      <div class="field"><label class="field-label">결정 내용</label><textarea class="input" id="dec-input" rows="3" placeholder="회의에서 결정된 내용을 입력하세요"></textarea></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('modal-decision')">취소</button>
+        <button class="btn btn-primary" onclick="addDecision()">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modal-agenda" onclick="closeOut(event,this)">
+    <div class="modal">
+      <div class="modal-ttl">아젠다 추가 <button class="modal-close" onclick="closeModal('modal-agenda')">×</button></div>
+      <div class="modal-sub" style="margin-bottom:14px;"></div>
+      <div class="field"><label class="field-label">아젠다 내용</label><input class="input" placeholder="예) 최종 발표 순서 확정" /></div>
+      <div class="field-row">
+        <div class="field"><label class="field-label">소요 시간 (분)</label><input class="input" type="number" value="10" min="1" /></div>
+        <div class="field"><label class="field-label">담당</label><select class="input"><option>김민준</option><option>이서연</option><option>박지호</option><option>최유나</option></select></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('modal-agenda')">취소</button>
+        <button class="btn btn-primary" onclick="closeModal('modal-agenda');showToast('아젠다가 추가되었습니다')">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><i class="ti ti-circle-check"></i><span></span></div>
+
+</div>
+
+
+<script>
+/* ── 테마 ── */
+const root = document.documentElement;
+function toggleTheme() { root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark'; }
+
+/* ── 화면 전환 ── */
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  playReveal(el);
+  if (id === 'screen-dashboard') animateDash();
+}
+function playReveal(scope) {
+  scope.querySelectorAll('.reveal').forEach(el => {
+    el.style.animation = 'none'; void el.offsetHeight; el.style.animation = '';
+  });
+}
+
+/* ── 온보딩 ── */
+let obStep = 0;
+function startOnboarding() {
+  obStep = 0;
+  const code = genCode();
+  document.getElementById('ob-code').textContent = code;
+  document.getElementById('ob-code2').textContent = code;
+  const exp = new Date(); exp.setDate(exp.getDate() + 7);
+  document.getElementById('ob-expire').textContent = `${exp.getMonth()+1}월 ${exp.getDate()}일까지 유효`;
+  setObStep(0);
+  goTo('screen-onboard');
+}
+function genCode() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let s = '';
+  for (let i=0;i<3;i++) s += c[Math.floor(Math.random()*c.length)];
+  return s + '-' + Math.floor(100+Math.random()*900);
+}
+function setObStep(n) {
+  obStep = n;
+  for (let i=0;i<3;i++) {
+    const s = document.getElementById('obs-'+i);
+    s.classList.toggle('active', i === n);
+    s.classList.toggle('done', i < n);
+    document.getElementById('ob-pane-'+i).classList.toggle('active', i === n);
+    if (i < 2) document.getElementById('obl-'+i).classList.toggle('done', i < n);
+  }
+}
+function obNext(from) { setObStep(from + 1); }
+function pickChip(el) {
+  el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+}
+function copyCode() {
+  const code = document.getElementById('ob-code').textContent;
+  if (navigator.clipboard) navigator.clipboard.writeText(code).catch(()=>{});
+  showToast('초대코드 ' + code + ' 복사됨');
+}
+function enterGroup() { goTo('screen-dashboard'); navDash('dash'); }
+
+/* ── 홈 ── */
+function fmtCode(inp) {
+  let v = inp.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,6);
+  if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3);
+  inp.value = v;
+}
+function joinGroup() {
+  const v = document.getElementById('join-code').value.trim();
+  if (v.length < 5) { showToast('올바른 초대코드를 입력해주세요'); return; }
+  showToast(v + ' 그룹 참가 요청 완료');
+  document.getElementById('join-code').value = '';
+}
+function toggleHomeTask(el) {
+  const row = el.closest('.task-row');
+  el.classList.add('done');
+  row.querySelector('.t-name').classList.add('done');
+  setTimeout(() => {
+    row.style.transition = 'opacity .3s,transform .3s';
+    row.style.opacity = '0'; row.style.transform = 'translateX(12px)';
+    setTimeout(() => {
+      row.remove();
+      const list = document.getElementById('home-tasks');
+      const left = list.querySelectorAll('.task-row').length;
+      const cnt = document.getElementById('home-task-count');
+      if (left === 0) {
+        cnt.textContent = '0개';
+        list.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:7px;padding:22px 0;color:var(--text-soft);"><i class="ti ti-circle-check" style="font-size:28px;color:var(--green);"></i><span style="font-size:12.5px;font-weight:600;">처리할 태스크가 없어요</span></div>';
+      } else { cnt.textContent = left + '개'; }
+    }, 300);
+  }, 320);
+}
+
+/* ── 대시보드 네비 ── */
+const DTITLE = { dash:'대시보드', meeting:'회의 관리', tasks:'태스크', report:'기여도 리포트' };
+function navDash(page) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+  document.querySelectorAll('.dpage').forEach(p => p.classList.remove('active'));
+  document.getElementById('dpage-' + page).classList.add('active');
+  document.getElementById('dash-title').textContent = DTITLE[page];
+  if (page === 'dash') animateBars();
+  if (page === 'meeting') animateBars();
+  if (page === 'tasks') animateBars();
+  if (page === 'report') { animateBars(); drawRadar(); }
+}
+function animateDash() { animateBars(); }
+function animateBars() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.c-bar i[data-w], .speak-bar i[data-w]').forEach(b => { b.style.width = b.dataset.w + '%'; });
+    document.querySelectorAll('.prog-fill[data-w]').forEach(b => { b.style.width = b.dataset.w + '%'; });
+  });
+}
+
+/* ── 회의 탭 ── */
+function switchTab(tab, el) {
+  el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'speak') animateBars();
+}
+function addDecision() {
+  const v = document.getElementById('dec-input').value.trim();
+  if (!v) { showToast('결정 내용을 입력해주세요'); return; }
+  const item = document.createElement('div');
+  item.className = 'dec-item';
+  item.innerHTML = '<div class="dec-ic"><i class="ti ti-check"></i></div><div class="dec-text"></div>';
+  item.querySelector('.dec-text').textContent = v;
+  document.getElementById('dec-list').appendChild(item);
+  document.getElementById('dec-input').value = '';
+  closeModal('modal-decision');
+  showToast('결정 사항이 추가되었습니다');
+}
+
+/* ── 태스크 뷰 ── */
+function switchView(view) {
+  document.getElementById('vt-board').classList.toggle('active', view === 'board');
+  document.getElementById('vt-list').classList.toggle('active', view === 'list');
+  document.getElementById('task-board').style.display = view === 'board' ? 'grid' : 'none';
+  document.getElementById('task-list').style.display = view === 'list' ? 'block' : 'none';
+}
+function toggleLRow(el) {
+  el.classList.toggle('done');
+  el.closest('.lrow').querySelector('.lrow-title').classList.toggle('done');
+}
+
+/* ── 모달 ── */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeOut(e, bg) { if (e.target === bg) bg.classList.remove('open'); }
+function pickType(el) {
+  el.parentElement.querySelectorAll('.type-opt').forEach(o => o.classList.remove('on'));
+  el.classList.add('on');
+}
+
+/* ── 토스트 ── */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.querySelector('span').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/* ── 회의 경과 타이머 ── */
+let elapsed = 24*60 + 17;
+setInterval(() => {
+  elapsed++;
+  const el = document.getElementById('m-elapsed');
+  if (el) el.textContent = String(Math.floor(elapsed/60)).padStart(2,'0') + ':' + String(elapsed%60).padStart(2,'0');
+}, 1000);
+
+/* ── 레이더 차트 ── */
+function drawRadar() {
+  const svg = document.getElementById('radar');
+  if (!svg || svg.dataset.drawn) return;
+  svg.dataset.drawn = '1';
+  const cx=120, cy=120, R=88, axes=4;
+  const labels=['발언','태스크','참석','액션완료'];
+  const me=[38,100,100,100], avg=[25,58,92,59];
+  const css = getComputedStyle(document.documentElement);
+  const ang = i => (Math.PI*2*i/axes) - Math.PI/2;
+  const pt = (i,v) => [cx+Math.cos(ang(i))*R*v/100, cy+Math.sin(ang(i))*R*v/100];
+  let h='';
+  /* grid rings */
+  [25,50,75,100].forEach(v=>{
+    let p='';
+    for(let i=0;i<axes;i++){const[x,y]=pt(i,v);p+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);}
+    h+=`<path d="${p}Z" fill="none" stroke="${css.getPropertyValue('--border')}" stroke-width="1"/>`;
+  });
+  /* spokes + labels */
+  for(let i=0;i<axes;i++){
+    const[x,y]=pt(i,100);
+    h+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="${css.getPropertyValue('--border')}" stroke-width="1"/>`;
+    const[lx,ly]=pt(i,128);
+    h+=`<text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${css.getPropertyValue('--text-mut')}">${labels[i]}</text>`;
+  }
+  const poly = (data,stroke,fill) => {
+    let p='';
+    for(let i=0;i<axes;i++){const[x,y]=pt(i,data[i]);p+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);}
+    return `<path d="${p}Z" fill="${fill}" stroke="${stroke}" stroke-width="2.4" stroke-linejoin="round"/>`;
+  };
+  h+=poly(avg, css.getPropertyValue('--text-soft'), 'rgba(150,160,150,.16)');
+  h+=poly(me, css.getPropertyValue('--green'), 'rgba(29,158,117,.2)');
+  for(let i=0;i<axes;i++){const[x,y]=pt(i,me[i]);h+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4" fill="${css.getPropertyValue('--green')}"/>`;}
+  svg.innerHTML=h;
+}
+
+
+/* 초기 진입 애니메이션 */
+window.addEventListener('load', () => {
+  playReveal(document.getElementById('screen-login'));
+});
+</script>
+</body>
+</html>
