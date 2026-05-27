@@ -286,7 +286,7 @@ export default function HomePage() {
                   <i className="ti ti-settings" /> 설정
                 </div>
                 <div className="pd-divider" />
-                <div className="pd-item danger">
+                <div className="pd-item danger" onClick={() => navigate("/")}>
                   <i className="ti ti-logout" /> 로그아웃
                 </div>
               </div>
