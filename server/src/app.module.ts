@@ -19,6 +19,8 @@ import { User } from './entities/user.entity';
         entities: [User],
         synchronize: config.get<string>('NODE_ENV') !== 'production',
         timezone: '+09:00',
+        // 한글 등 멀티바이트 문자 깨짐(???) 방지
+        charset: 'utf8mb4',
       }),
       inject: [ConfigService],
     }),
