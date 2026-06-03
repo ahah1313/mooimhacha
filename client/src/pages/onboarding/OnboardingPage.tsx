@@ -38,17 +38,30 @@ export default function OnboardingPage() {
     }
     setIsCreating(true);
     try {
-      const data = await apiFetch<{ invite_code: string }>("/api/teams", {
+      type CreateTeamResponse = {
+        id: number;
+        name: string;
+        course_name: string;
+        invite_code: string;
+        created_by: number;
+      };
+
+      const data = await apiFetch<CreateTeamResponse>("/api/teams", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader() },
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
         body: JSON.stringify({
           name: teamName.trim(),
           course_name: selectedChip || "기타",
         }),
       });
+
       setInviteCode(data.invite_code);
       setTeamId(data.id);
       console.log(data);
+      
       setStep(1);
     } catch (err) {
       showToast((err as Error).message || "팀 생성 실패");
