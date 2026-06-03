@@ -2,7 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
+import { TeamsModule } from './teams/teams.module';
 import { User } from './entities/user.entity';
+import { Team } from './entities/team.entity';
+import { TeamMembership } from './entities/team-membership.entity';
+import { TeamSettings } from './entities/team-settings.entity';
 
 @Module({
   imports: [
@@ -16,7 +20,7 @@ import { User } from './entities/user.entity';
         username: config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
-        entities: [User],
+        entities: [User, Team, TeamMembership, TeamSettings],
         synchronize: config.get<string>('NODE_ENV') !== 'production',
         timezone: '+09:00',
         // 한글 등 멀티바이트 문자 깨짐(???) 방지
@@ -25,6 +29,7 @@ import { User } from './entities/user.entity';
       inject: [ConfigService],
     }),
     AuthModule,
+    TeamsModule,
   ],
 })
 export class AppModule {}

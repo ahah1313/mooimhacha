@@ -1,0 +1,58 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+@Entity('team_settings')
+export class TeamSettings {
+  @PrimaryColumn({ type: 'bigint' })
+  team_id!: number;
+
+  @Column({ type: 'decimal', precision: 4, scale: 3, default: 0.1 })
+  punctuality_grace_ratio!: number;
+
+  @Column({ type: 'int', default: 500 })
+  max_utterance_chars!: number;
+
+  @Column({ type: 'int', default: 30 })
+  presence_grace_seconds!: number;
+
+  @Column({
+    type: 'enum',
+    enum: ['exclude', 'zero', 'attendance_only'],
+    default: 'exclude',
+  })
+  absent_meeting_handling!: 'exclude' | 'zero' | 'attendance_only';
+
+  @Column({
+    type: 'enum',
+    enum: ['standard', 'lenient', 'strict'],
+    default: 'standard',
+  })
+  deadline_penalty_curve!: 'standard' | 'lenient' | 'strict';
+
+  @Column({
+    type: 'enum',
+    enum: ['team', 'self', 'leader'],
+    default: 'team',
+  })
+  contribution_visibility!: 'team' | 'self' | 'leader';
+
+  @Column({ type: 'int', default: 5 })
+  min_meeting_minutes!: number;
+
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0.5 })
+  final_task_weight!: number;
+
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 1.0 })
+  leader_bonus_multiplier!: number;
+
+  @CreateDateColumn()
+  created_at!: Date;
+
+  @UpdateDateColumn()
+  updated_at!: Date;
+}
