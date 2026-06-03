@@ -11,6 +11,7 @@ import { randomBytes } from 'crypto';
 import { Team } from '../entities/team.entity';
 import { TeamMembership } from '../entities/team-membership.entity';
 import { TeamSettings } from '../entities/team-settings.entity';
+import { User } from '../entities/user.entity';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { JoinTeamDto } from './dto/join-team.dto';
@@ -38,9 +39,30 @@ export class TeamsService {
 
     const teamIds = myMemberships.map((m) => Number(m.team_id));
 
-    const teams = await this.teamRepo.find({
-      where: { id: In(teamIds), deleted_at: IsNull() },
-    });
+    const [teams, allMemberships] = await Promise.all([
+      this.teamRepo.find({ where: { id: In(teamIds), deleted_at: IsNull() } }),
+      this.membershipRepo.find({
+        where: { team_id: In(teamIds), deleted_at: IsNull() },
+      }),
+    ]);
+
+    const allUserIds = [
+      ...new Set(allMemberships.map((m) => Number(m.user_id))),
+    ];
+    const users = await this.dataSource
+      .getRepository(User)
+      .find({
+        where: { id: In(allUserIds) },
+        select: { id: true, name: true },
+      });
+    const userMap = new Map(users.map((u) => [Number(u.id), u.name]));
+
+    const membersByTeam = new Map<number, string[]>();
+    for (const m of allMemberships) {
+      const tid = Number(m.team_id);
+      if (!membersByTeam.has(tid)) membersByTeam.set(tid, []);
+      membersByTeam.get(tid)!.push(userMap.get(Number(m.user_id)) ?? '?');
+    }
 
     const counts: { team_id: string; count: string }[] =
       await this.membershipRepo
@@ -59,12 +81,14 @@ export class TeamsService {
     return {
       teams: myMemberships.map((m) => {
         const team = teams.find((t) => Number(t.id) === Number(m.team_id))!;
+        const teamId = Number(team.id);
         return {
-          id: Number(team.id),
+          id: teamId,
           name: team.name,
           course_name: team.course_name,
           my_role: m.role,
-          member_count: countMap.get(Number(team.id)) ?? 0,
+          member_count: countMap.get(teamId) ?? 0,
+          members: membersByTeam.get(teamId) ?? [],
         };
       }),
     };
