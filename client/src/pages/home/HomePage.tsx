@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
-import { getUser } from "@/lib/auth";
+import { getUser, clearSession } from "@/lib/auth";
 import { apiFetch, authHeader } from "@/lib/apiFetch";
 import Card from "@/components/Card";
 import "@/styles/home.css";
@@ -313,7 +313,13 @@ export default function HomePage() {
                   <i className="ti ti-settings" /> 설정
                 </div>
                 <div className="pd-divider" />
-                <div className="pd-item danger" onClick={() => navigate("/")}>
+                <div
+                  className="pd-item danger"
+                  onClick={() => {
+                    clearSession();
+                    navigate("/");
+                  }}
+                >
                   <i className="ti ti-logout" /> 로그아웃
                 </div>
               </div>

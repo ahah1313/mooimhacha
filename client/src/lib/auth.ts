@@ -23,6 +23,11 @@ export function saveSession(tokens: SessionTokens) {
   localStorage.setItem("refresh_token", tokens.refresh_token);
 }
 
+export function clearSession() {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+}
+
 export interface UserInfo {
   id: number;
   name: string;

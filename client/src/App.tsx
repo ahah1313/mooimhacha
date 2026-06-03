@@ -4,10 +4,15 @@ import AuthCallback from "@/pages/login/AuthCallback";
 import OnboardingPage from "@/pages/onboarding/OnboardingPage";
 import HomePage from "@/pages/home/HomePage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
+import { useToast } from "@/hooks/useToast";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("access_token");
-  if (!token) return <Navigate to="/" replace />;
+  const { showToast } = useToast();
+  if (!token) {
+    showToast("로그인이 필요합니다.");
+    return <Navigate to="/" replace />;
+  }
   return <>{children}</>;
 }
 
