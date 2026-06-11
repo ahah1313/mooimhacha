@@ -4,6 +4,9 @@ import AuthCallback from "@/pages/login/AuthCallback";
 import OnboardingPage from "@/pages/onboarding/OnboardingPage";
 import HomePage from "@/pages/home/HomePage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
+import MeetingLauncher from "@/pages/meeting/MeetingLauncher";
+import ContributionDashboard from "@/pages/meeting/ContributionDashboard";
+import TermsPage from "@/pages/terms/TermsPage";
 import { useToast } from "@/hooks/useToast";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -46,6 +49,23 @@ export default function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/meetings"
+          element={
+            <PrivateRoute>
+              <MeetingLauncher />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/meetings/:meetingId/report"
+          element={
+            <PrivateRoute>
+              <ContributionDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route path="/terms" element={<TermsPage />} />
         {/* 정의되지 않은 경로는 로그인으로 */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

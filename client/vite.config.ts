@@ -9,6 +9,15 @@ export default defineConfig({
     },
   },
   plugins: [react()],
+  // 멀티 페이지: 메인 탭(index.html) + 회의 중 보조 창(companion.html)
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.join(__dirname, "index.html"),
+        companion: path.join(__dirname, "companion.html"),
+      },
+    },
+  },
   server: {
     // 백엔드(localhost:3000)와 포트 충돌 방지
     port: 5173,
