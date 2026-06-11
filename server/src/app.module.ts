@@ -10,6 +10,7 @@ import { ContributionModule } from './contribution/contribution.module';
 import { ContributionsModule } from './contributions/contributions.module';
 import { MeetingsModule } from './meetings/meetings.module';
 import { ReportsModule } from './reports/reports.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { AgendasModule } from './agendas/agendas.module';
 import { DecisionsModule } from './decisions/decisions.module';
 import { ActionItemsModule } from './action-items/action-items.module';
@@ -41,6 +42,7 @@ import { buildTypeOrmOptions } from './data-source';
     ContributionsModule,
     MeetingsModule,
     ReportsModule,
+    RealtimeModule,
     AgendasModule,
     DecisionsModule,
     ActionItemsModule,
