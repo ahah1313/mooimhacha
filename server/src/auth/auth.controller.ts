@@ -87,6 +87,7 @@ export class AuthController {
       university: u.university,
       department: u.department,
       profile_image_url: u.profile_image_url,
+      email_opt_out: u.email_opt_out,
     };
   }
 

@@ -6,6 +6,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export type DeadlinePenaltyCurve = 'standard' | 'lenient' | 'strict';
+export type AbsentMeetingHandling = 'exclude' | 'zero' | 'attendance_only';
+export type ContributionVisibility = 'team' | 'leader' | 'self';
+
 @Entity('team_settings')
 export class TeamSettings {
   @PrimaryColumn({ type: 'bigint' })
@@ -25,21 +29,21 @@ export class TeamSettings {
     enum: ['exclude', 'zero', 'attendance_only'],
     default: 'exclude',
   })
-  absent_meeting_handling!: 'exclude' | 'zero' | 'attendance_only';
+  absent_meeting_handling!: AbsentMeetingHandling;
 
   @Column({
     type: 'enum',
     enum: ['standard', 'lenient', 'strict'],
     default: 'standard',
   })
-  deadline_penalty_curve!: 'standard' | 'lenient' | 'strict';
+  deadline_penalty_curve!: DeadlinePenaltyCurve;
 
   @Column({
     type: 'enum',
     enum: ['team', 'self', 'leader'],
     default: 'team',
   })
-  contribution_visibility!: 'team' | 'self' | 'leader';
+  contribution_visibility!: ContributionVisibility;
 
   @Column({ type: 'int', default: 5 })
   min_meeting_minutes!: number;

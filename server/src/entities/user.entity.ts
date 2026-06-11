@@ -30,6 +30,9 @@ export class User {
   @Column({ type: 'varchar', length: 500, nullable: true })
   profile_image_url!: string | null;
 
+  @Column({ type: 'boolean', default: false })
+  email_opt_out!: boolean;
+
   @CreateDateColumn()
   created_at!: Date;
 

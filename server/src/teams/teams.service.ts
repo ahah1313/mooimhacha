@@ -26,8 +26,50 @@ export class TeamsService {
     private membershipRepo: Repository<TeamMembership>,
     @InjectRepository(TeamSettings)
     private settingsRepo: Repository<TeamSettings>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
     private dataSource: DataSource,
   ) {}
+
+  // 다른 도메인 모듈(agendas/action-items/decisions/projects 등)이 공유하는
+  // 멤버십/권한 검증 헬퍼 — feature/core-meeting-flow의 TeamsService와 동일 계약
+  async getMembers(teamId: number, opts?: { includePast?: boolean }) {
+    const memberships = await this.membershipRepo.find({
+      where: { team_id: teamId },
+      withDeleted: opts?.includePast ?? false,
+    });
+    if (memberships.length === 0) return [];
+    const users = await this.userRepo.find({
+      where: { id: In(memberships.map((m) => m.user_id)) },
+    });
+    const userById = new Map(users.map((u) => [u.id, u]));
+    return memberships.map((m) => {
+      const u = userById.get(m.user_id);
+      return {
+        user_id: m.user_id,
+        name: u?.name ?? '알 수 없음',
+        profile_image_url: u?.profile_image_url ?? null,
+        role: m.role,
+        joined_at: m.joined_at,
+      };
+    });
+  }
+
+  async requireMembership(userId: number, teamId: number) {
+    const m = await this.membershipRepo.findOne({
+      where: { team_id: teamId, user_id: userId },
+    });
+    if (!m) throw new ForbiddenException('팀 멤버가 아닙니다.');
+    return m;
+  }
+
+  async requireLeader(userId: number, teamId: number) {
+    const m = await this.requireMembership(userId, teamId);
+    if (m.role !== 'leader') {
+      throw new ForbiddenException('팀장만 수행할 수 있습니다.');
+    }
+    return m;
+  }
 
   // 2-1. 내 팀 목록
   async getMyTeams(userId: number) {
@@ -191,7 +233,7 @@ export class TeamsService {
     }
 
     if (existing?.deleted_at) {
-      existing.deleted_at = null as unknown as Date;
+      existing.deleted_at = null;
       existing.role = 'member';
       existing.joined_at = new Date();
       await this.membershipRepo.save(existing);
