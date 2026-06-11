@@ -1,0 +1,87 @@
+# 무임하차 — 단일 EC2 운영 스택 (Caddy + NestJS + 클라이언트 정적 빌드)
+#
+# 사용법:
+#   1) 루트에 .env 작성 (.env.sample 참고): DOMAIN, (선택)VITE_API_BASE_URL/VITE_WS_URL
+#   2) server/.env 작성 (DB_*, JWT_SECRET, KAKAO_*, OPENAI_API_KEY, PORT 등)
+#   3) docker compose up -d --build
+#
+# 흐름: client-build 가 정적 산출물을 web-dist 볼륨에 복사하고 종료
+#       → caddy 가 web-dist 를 /srv 로 서빙 + /api·/socket.io 를 nest 로 프록시.
+# RDS는 외부(AWS)이므로 DB 컨테이너 없음. NestJS 포트 3000은 외부 비노출(Caddy가 내부 프록시).
+
+# 로그 로테이션 — 무제한 누적으로 작은 EBS 디스크가 차는 것 방지 (전 서비스 공통)
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # 클라이언트 정적 빌드 — 1회 실행 후 종료 (web-dist 볼륨에 산출물 복사)
+  client-build:
+    build:
+      context: ./client
+      args:
+        # 비우면 상대경로(동일 오리진). 운영은 동일 오리진 권장.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_WS_URL: ${VITE_WS_URL:-}
+    volumes:
+      - web-dist:/export
+    restart: "no"
+    logging: *default-logging
+
+  # NestJS 백엔드 — 외부 비노출(expose만), Caddy가 nest:3000 으로 프록시
+  nest:
+    build:
+      context: ./server
+    container_name: nest
+    env_file:
+      - ./server/.env
+    environment:
+      # 표시용 시각은 코드에서 Asia/Seoul 을 명시하지만, 방어적으로 컨테이너 TZ도 고정
+      TZ: Asia/Seoul
+    expose:
+      - "3000"
+    restart: unless-stopped
+    logging: *default-logging
+    # 노드 이미지에 curl 이 없어 node 내장 fetch 로 확인 (PORT 미설정 시 3000).
+    # unhealthy 여도 Docker 가 자동 재시작하진 않음 — docker ps 가시성 + 외부 모니터용.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:'+(process.env.PORT||3000)+'/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # Nest 부팅 + 외부 RDS 연결까지 넉넉히 대기
+      start_period: 30s
+
+  # Caddy — 정적 SPA 서빙 + 리버스 프록시 + Let's Encrypt 자동 TLS
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - web-dist:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      client-build:
+        condition: service_completed_successfully
+      # service_healthy 로 바꾸지 말 것 — RDS가 부팅 시점에 잠깐 불통이면
+      # 정적 SPA·TLS 발급까지 통째로 다운된다.
+      nest:
+        condition: service_started
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  web-dist:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,22 @@
+# 빌드 컨텍스트에서 제외 (이미지 슬림화 + 비밀/캐시 유출 방지)
+node_modules
+dist
+coverage
+
+# 환경 변수 / 비밀 — 컨테이너에는 env_file로 주입
+.env
+.env.*
+
+# 로그
+logs
+*.log
+
+# 테스트
+test
+
+# 메타/문서
+.git
+.gitignore
+Dockerfile
+.dockerignore
+README.md
