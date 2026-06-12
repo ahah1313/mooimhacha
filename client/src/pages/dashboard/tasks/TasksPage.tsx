@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
 import Modal from "@/components/Modal";
-import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import ConfirmModal from "@/components/ConfirmModal";
+import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api";
 import type { ActionItem, TeamContribution } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 
 type Status = "할 일" | "진행 중" | "완료";
 
-// 화면 표기(한글) ↔ 서버 상태값 매핑
 const STATUS_TO_API: Record<Status, ActionItem["status"]> = {
   "할 일": "todo",
   "진행 중": "in_progress",
@@ -21,7 +21,6 @@ const API_TO_STATUS: Record<string, Status> = {
 };
 
 const STATUS_COLS: Status[] = ["할 일", "진행 중", "완료"];
-// status → 스타일 매핑 테이블. 컴포넌트 외부에 선언해 렌더마다 재생성하지 않음.
 const COL_COLOR = {
   "할 일": "var(--text-soft)",
   "진행 중": "var(--blue)",
@@ -30,7 +29,6 @@ const COL_COLOR = {
 const COL_BADGE = { "할 일": "", "진행 중": "b-blue", 완료: "b-green" };
 const STATUS_CLS = { "할 일": "s-todo", "진행 중": "s-inprog", 완료: "s-done" };
 
-// 마감 임박 판정: danger = 지남·오늘·내일, warn = 3일 이내
 function dueState(due: string | null): {
   danger: boolean;
   warn: boolean;
@@ -52,20 +50,44 @@ function dueState(due: string | null): {
   return { danger: diff <= 1, warn: diff > 1 && diff <= 3, label };
 }
 
+const DIFF_CHIPS = [
+  { value: 1, label: "★ 낮음" },
+  { value: 2, label: "★★ 보통" },
+  { value: 3, label: "★★★ 높음" },
+] as const;
+
+const STATUS_CHIP_CLS: Record<Status, string> = {
+  "할 일": "chip-todo",
+  "진행 중": "chip-inprog",
+  완료: "chip-done",
+};
+
 export default function TasksPage() {
   const { showToast } = useToast();
   const team = useOutletContext<TeamContext | null>();
   const [view, setView] = useState<"board" | "list">("board");
   const [tasks, setTasks] = useState<ActionItem[]>([]);
   const [members, setMembers] = useState<TeamContribution[]>([]);
+
+  // 추가 모달
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  // 추가 모달 입력값
   const [newDesc, setNewDesc] = useState("");
   const [newAssignee, setNewAssignee] = useState<string>("");
   const [newDue, setNewDue] = useState("");
   const [newStatus, setNewStatus] = useState<Status>("할 일");
+  const [newDifficulty, setNewDifficulty] = useState(2);
+
+  // 수정 모달
+  const [editTarget, setEditTarget] = useState<ActionItem | null>(null);
+  const [editDesc, setEditDesc] = useState("");
+  const [editAssignee, setEditAssignee] = useState("");
+  const [editDue, setEditDue] = useState("");
+  const [editStatus, setEditStatus] = useState<Status>("할 일");
+  const [editDifficulty, setEditDifficulty] = useState(2);
+  const [editSaving, setEditSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     if (!team) return;
@@ -93,8 +115,6 @@ export default function TasksPage() {
     const i = members.findIndex((m) => m.user_id === id);
     return `a${((i < 0 ? 0 : i) % 4) + 1}`;
   };
-  // 담당자 식별용 색 — 아바타(a1~a4)와 같은 순서의 단색 팔레트. 미지정이면 null.
-  // (--av1~4는 그라데이션이라 border 색으로 쓸 수 없음)
   const MEMBER_STRIPE = [
     "var(--green)",
     "var(--blue)",
@@ -105,7 +125,6 @@ export default function TasksPage() {
     const i = members.findIndex((m) => m.user_id === id);
     return i < 0 ? null : MEMBER_STRIPE[i % 4];
   };
-  // 기존 danger/warn(마감 임박)의 빨강/노랑 줄이 우선, 그 외에는 담당자 색 줄
   const stripeStyle = (
     assigneeId: number | null,
     danger: boolean,
@@ -119,7 +138,6 @@ export default function TasksPage() {
   const done = tasks.filter((t) => t.status === "done").length;
   const total = tasks.length;
 
-  // OverviewPage와 동일한 rAF 패턴: 진행률 바 초기 애니메이션
   useEffect(() => {
     requestAnimationFrame(() => {
       document
@@ -130,9 +148,58 @@ export default function TasksPage() {
     });
   }, [total]);
 
+  function openEdit(task: ActionItem) {
+    setEditTarget(task);
+    setEditDesc(task.description);
+    setEditAssignee(task.assignee_id ? String(task.assignee_id) : "");
+    setEditDue(task.due_date ?? "");
+    setEditStatus(API_TO_STATUS[task.status] ?? "할 일");
+    setEditDifficulty(task.difficulty ?? 2);
+  }
+
+  async function saveEdit() {
+    if (!editTarget || editSaving) return;
+    if (!editDesc.trim()) {
+      showToast("태스크 이름을 입력해 주세요", "error");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      await apiPatch(`/action-items/${editTarget.id}`, {
+        description: editDesc.trim(),
+        assignee_id: editAssignee ? Number(editAssignee) : undefined,
+        due_date: editDue || undefined,
+        status: STATUS_TO_API[editStatus],
+        difficulty: editDifficulty,
+      });
+      setEditTarget(null);
+      showToast("태스크가 수정되었습니다");
+      await load();
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function deleteTask() {
+    if (!editTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await apiDelete(`/action-items/${editTarget.id}`);
+      setTasks((ts) => ts.filter((t) => t.id !== editTarget.id));
+      setConfirmDelete(false);
+      setEditTarget(null);
+      showToast("태스크가 삭제되었습니다");
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function changeStatus(task: ActionItem, status: Status) {
     const prev = tasks;
-    // 낙관적 갱신 — 실패 시 원복
     setTasks((ts) =>
       ts.map((t) =>
         t.id === task.id ? { ...t, status: STATUS_TO_API[status] } : t,
@@ -166,12 +233,14 @@ export default function TasksPage() {
         assignee_id: newAssignee ? Number(newAssignee) : undefined,
         due_date: newDue || undefined,
         status: STATUS_TO_API[newStatus],
+        difficulty: newDifficulty,
       });
       setModalOpen(false);
       setNewDesc("");
       setNewAssignee("");
       setNewDue("");
       setNewStatus("할 일");
+      setNewDifficulty(2);
       showToast("태스크가 추가되었습니다");
       await load();
     } catch (e) {
@@ -258,7 +327,11 @@ export default function TasksPage() {
                     <div
                       key={t.id}
                       className={`tcard ${danger ? "danger" : ""} ${warn ? "warn" : ""} ${status === "완료" ? "done-card" : ""}`}
-                      style={stripeStyle(t.assignee_id, danger, warn)}
+                      style={{
+                        cursor: "pointer",
+                        ...stripeStyle(t.assignee_id, danger, warn),
+                      }}
+                      onClick={() => openEdit(t)}
                     >
                       <div className="tc-head">
                         <div
@@ -295,6 +368,7 @@ export default function TasksPage() {
                         <select
                           className={`tc-status ${STATUS_CLS[status]}`}
                           value={status}
+                          onClick={(e) => e.stopPropagation()}
                           onChange={(e) =>
                             void changeStatus(t, e.target.value as Status)
                           }
@@ -328,11 +402,18 @@ export default function TasksPage() {
               <div
                 key={t.id}
                 className={`lrow ${danger ? "danger" : ""} ${warn ? "warn" : ""}`}
-                style={stripeStyle(t.assignee_id, danger, warn)}
+                style={{
+                  cursor: "pointer",
+                  ...stripeStyle(t.assignee_id, danger, warn),
+                }}
+                onClick={() => openEdit(t)}
               >
                 <div
                   className={`t-check ${status === "완료" ? "done" : ""}`}
-                  onClick={() => toggleList(t)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleList(t);
+                  }}
                 >
                   <i className="ti ti-check" />
                 </div>
@@ -365,6 +446,7 @@ export default function TasksPage() {
         </div>
       )}
 
+      {/* 태스크 추가 모달 */}
       {modalOpen && (
         <Modal
           title="태스크 추가"
@@ -424,17 +506,147 @@ export default function TasksPage() {
           </div>
           <div className="field">
             <label className="field-label">상태</label>
-            <select
-              className="input"
-              value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as Status)}
-            >
-              <option>할 일</option>
-              <option>진행 중</option>
-              <option>완료</option>
-            </select>
+            <div className="chip-row">
+              {(["할 일", "진행 중", "완료"] as Status[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`chip-opt ${STATUS_CHIP_CLS[s]} ${newStatus === s ? "active" : ""}`}
+                  onClick={() => setNewStatus(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="field">
+            <label className="field-label">난이도</label>
+            <div className="chip-row">
+              {DIFF_CHIPS.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  className={`chip-opt chip-diff ${newDifficulty === c.value ? "active" : ""}`}
+                  onClick={() => setNewDifficulty(c.value)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
           </div>
         </Modal>
+      )}
+
+      {/* 태스크 수정 모달 */}
+      {editTarget && !confirmDelete && (
+        <Modal
+          title="태스크 수정"
+          onClose={() => setEditTarget(null)}
+          actions={
+            <>
+              <button
+                className="btn btn-danger"
+                style={{ marginRight: "auto" }}
+                onClick={() => setConfirmDelete(true)}
+              >
+                삭제
+              </button>
+              <button className="btn" onClick={() => setEditTarget(null)}>
+                취소
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => void saveEdit()}
+                disabled={editSaving}
+              >
+                {editSaving ? "저장 중…" : "저장"}
+              </button>
+            </>
+          }
+        >
+          <div className="field">
+            <label className="field-label">태스크 이름</label>
+            <input
+              className="input"
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+            />
+          </div>
+          <div className="field-row">
+            <div className="field">
+              <label className="field-label">담당자</label>
+              <select
+                className="input"
+                value={editAssignee}
+                onChange={(e) => setEditAssignee(e.target.value)}
+              >
+                <option value="">미지정</option>
+                {members.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label className="field-label">마감일</label>
+              <input
+                className="input"
+                type="date"
+                value={editDue}
+                onChange={(e) => setEditDue(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="field">
+            <label className="field-label">상태</label>
+            <div className="chip-row">
+              {(["할 일", "진행 중", "완료"] as Status[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`chip-opt ${STATUS_CHIP_CLS[s]} ${editStatus === s ? "active" : ""}`}
+                  onClick={() => setEditStatus(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="field">
+            <label className="field-label">난이도</label>
+            <div className="chip-row">
+              {DIFF_CHIPS.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  className={`chip-opt chip-diff ${editDifficulty === c.value ? "active" : ""}`}
+                  onClick={() => setEditDifficulty(c.value)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 삭제 확인 모달 */}
+      {confirmDelete && editTarget && (
+        <ConfirmModal
+          title="태스크 삭제"
+          message={
+            <>
+              <strong>{editTarget.description}</strong>을(를) 삭제할까요?
+              <br />이 작업은 되돌릴 수 없습니다.
+            </>
+          }
+          confirmLabel="삭제"
+          danger
+          busy={deleting}
+          onConfirm={() => void deleteTask()}
+          onClose={() => setConfirmDelete(false)}
+        />
       )}
     </div>
   );
