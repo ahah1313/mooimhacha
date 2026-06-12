@@ -157,7 +157,7 @@ export default function TasksPage() {
           b.style.width = b.dataset.w + "%";
         });
     });
-  }, [total]);
+  }, [done, total]);
 
   function openEdit(task: ActionItem) {
     setEditTarget(task);
