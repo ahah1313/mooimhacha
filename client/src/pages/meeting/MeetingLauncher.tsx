@@ -33,6 +33,7 @@ export default function MeetingLauncher() {
   );
 
   const [teamName, setTeamName] = useState("");
+  const [courseName, setCourseName] = useState("");
   const [joinCode, setJoinCode] = useState("");
 
   const [topic, setTopic] = useState("");
@@ -95,13 +96,16 @@ export default function MeetingLauncher() {
   }, [teamId, loadMeetings, navigate]);
 
   const createTeam = async () => {
-    if (!teamName.trim() || creatingTeam) return;
+    // course_name은 서버 CreateTeamDto 필수값 — 누락 시 400
+    if (!teamName.trim() || !courseName.trim() || creatingTeam) return;
     setCreatingTeam(true);
     try {
       const team = await apiPost<Team & { id: number }>("/teams", {
         name: teamName.trim(),
+        course_name: courseName.trim(),
       });
       setTeamName("");
+      setCourseName("");
       setShowAddTeam(false);
       await loadTeams();
       setTeamId(team.id);
@@ -280,6 +284,11 @@ export default function MeetingLauncher() {
               placeholder="새 그룹 이름 (예: 캡스톤 B조)"
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
+            />
+            <input
+              placeholder="과목명 (예: 클라우드 컴퓨팅)"
+              value={courseName}
+              onChange={(e) => setCourseName(e.target.value)}
             />
             <button
               className="live-btn"
