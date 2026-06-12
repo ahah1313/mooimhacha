@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
 import Modal from "@/components/Modal";
-import { apiGet, apiPost } from "@/lib/api";
+import ConfirmModal from "@/components/ConfirmModal";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 import type {
   Agenda,
   Decision,
@@ -56,6 +57,11 @@ export default function MeetingPage() {
   const [modalOpen, setModalOpen] = useState<
     "meeting" | "decision" | "agenda" | null
   >(null);
+  // 결정 수정/삭제 대상 — 수정은 결정 모달을 재사용, 삭제는 확인 모달을 띄운다.
+  const [editingDecision, setEditingDecision] = useState<Decision | null>(null);
+  const [deletingDecision, setDeletingDecision] = useState<Decision | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   // 발언 탭 최초 진입 시 바 애니메이션을 한 번만 실행하기 위한 플래그.
   // state 대신 ref를 쓰는 이유: 값 변경이 리렌더를 유발할 필요 없음.
@@ -167,7 +173,8 @@ export default function MeetingPage() {
     ":" +
     String(s % 60).padStart(2, "0");
 
-  async function addDecision() {
+  // 추가/수정 겸용 — editingDecision이 있으면 PATCH, 없으면 POST
+  async function saveDecision() {
     if (!decInput.trim()) {
       showToast("결정 내용을 입력해주세요");
       return;
@@ -175,16 +182,44 @@ export default function MeetingPage() {
     if (!selectedId || busy) return;
     setBusy(true);
     try {
-      await apiPost("/decisions", {
-        meeting_id: selectedId,
-        content: decInput.trim(),
-      });
+      if (editingDecision) {
+        await apiPatch(`/decisions/${editingDecision.id}`, {
+          content: decInput.trim(),
+        });
+      } else {
+        await apiPost("/decisions", {
+          meeting_id: selectedId,
+          content: decInput.trim(),
+        });
+      }
       setDecisions(
         await apiGet<Decision[]>(`/decisions?meeting_id=${selectedId}`),
       );
       setDecInput("");
       setModalOpen(null);
-      showToast("결정 사항이 추가되었습니다");
+      showToast(
+        editingDecision
+          ? "결정 사항이 수정되었습니다"
+          : "결정 사항이 추가되었습니다",
+      );
+      setEditingDecision(null);
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteDecision() {
+    if (!deletingDecision || busy) return;
+    setBusy(true);
+    try {
+      await apiDelete(`/decisions/${deletingDecision.id}`);
+      setDecisions((prev) =>
+        prev.filter((d) => d.id !== deletingDecision.id),
+      );
+      setDeletingDecision(null);
+      showToast("결정 사항이 삭제되었습니다");
     } catch (e) {
       showToast((e as Error).message, "error");
     } finally {
@@ -566,7 +601,11 @@ export default function MeetingPage() {
                       <button
                         className="btn btn-primary btn-sm"
                         style={{ marginLeft: "auto" }}
-                        onClick={() => setModalOpen("decision")}
+                        onClick={() => {
+                          setEditingDecision(null);
+                          setDecInput("");
+                          setModalOpen("decision");
+                        }}
                       >
                         <i className="ti ti-plus" /> 추가
                       </button>
@@ -582,6 +621,26 @@ export default function MeetingPage() {
                           <i className="ti ti-check" />
                         </div>
                         <div className="dec-text">{d.content}</div>
+                        <div className="dec-actions">
+                          <button
+                            className="dec-act"
+                            aria-label="결정 수정"
+                            onClick={() => {
+                              setEditingDecision(d);
+                              setDecInput(d.content);
+                              setModalOpen("decision");
+                            }}
+                          >
+                            <i className="ti ti-pencil" />
+                          </button>
+                          <button
+                            className="dec-act dec-act--danger"
+                            aria-label="결정 삭제"
+                            onClick={() => setDeletingDecision(d)}
+                          >
+                            <i className="ti ti-trash" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -690,22 +749,31 @@ export default function MeetingPage() {
         </Modal>
       )}
 
-      {/* 결정 사항 모달 */}
+      {/* 결정 사항 모달 (추가/수정 겸용) */}
       {modalOpen === "decision" && (
         <Modal
-          title="결정 사항 추가"
-          onClose={() => setModalOpen(null)}
+          title={editingDecision ? "결정 사항 수정" : "결정 사항 추가"}
+          onClose={() => {
+            setModalOpen(null);
+            setEditingDecision(null);
+          }}
           actions={
             <>
-              <button className="btn" onClick={() => setModalOpen(null)}>
+              <button
+                className="btn"
+                onClick={() => {
+                  setModalOpen(null);
+                  setEditingDecision(null);
+                }}
+              >
                 취소
               </button>
               <button
                 className="btn btn-primary"
-                onClick={() => void addDecision()}
+                onClick={() => void saveDecision()}
                 disabled={busy}
               >
-                추가
+                {editingDecision ? "저장" : "추가"}
               </button>
             </>
           }
@@ -721,6 +789,24 @@ export default function MeetingPage() {
             />
           </div>
         </Modal>
+      )}
+
+      {/* 결정 삭제 확인 모달 */}
+      {deletingDecision && (
+        <ConfirmModal
+          title="결정 사항 삭제"
+          message={
+            <>
+              “{deletingDecision.content}”
+              <br />이 결정을 삭제할까요? 되돌릴 수 없습니다.
+            </>
+          }
+          confirmLabel="삭제"
+          danger
+          busy={busy}
+          onConfirm={() => void deleteDecision()}
+          onClose={() => setDeletingDecision(null)}
+        />
       )}
 
       {/* 아젠다 모달 */}

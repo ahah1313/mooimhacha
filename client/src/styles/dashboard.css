@@ -650,6 +650,31 @@
   flex: 1;
   line-height: 1.5;
 }
+.dec-actions {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.dec-act {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-soft);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  cursor: pointer;
+}
+.dec-act:hover {
+  background: var(--border-2);
+  color: var(--text);
+}
+.dec-act--danger:hover {
+  background: var(--coral-soft);
+  color: var(--coral);
+}
 .summary-box {
   border-radius: 14px;
   padding: 22px;
