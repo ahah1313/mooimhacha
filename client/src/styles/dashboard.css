@@ -11,6 +11,17 @@
   padding: 16px 14px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  transition:
+    width 0.22s ease,
+    flex-basis 0.22s ease,
+    padding 0.22s ease;
+}
+.sidebar.collapsed {
+  width: 0;
+  flex-basis: 0;
+  padding: 16px 0;
+  border-right: none;
 }
 .sb-back {
   font-family: var(--font-body);
@@ -170,6 +181,26 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+.sb-toggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+.sb-toggle:hover {
+  color: var(--text-main);
+  background: var(--surface-3);
+}
+.sb-toggle .ti {
+  font-size: 20px;
 }
 .main-top {
   height: 58px;
@@ -1165,4 +1196,43 @@
   font-size: 11px;
   color: var(--text-soft);
   margin-top: 4px;
+}
+
+@media print {
+  :root {
+    --ambient: #ffffff;
+    --bg: #ffffff;
+    --surface-2: #ffffff;
+    --surface-3: #f0f0f0;
+  }
+
+  .sidebar,
+  .main-top,
+  .report-wrap > div:first-child {
+    display: none !important;
+  }
+
+  .dash-shell {
+    display: block !important;
+    height: auto !important;
+  }
+
+  .main-area {
+    display: block !important;
+  }
+
+  .main-content {
+    padding: 16px !important;
+    overflow: visible !important;
+  }
+
+  .report-wrap {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }

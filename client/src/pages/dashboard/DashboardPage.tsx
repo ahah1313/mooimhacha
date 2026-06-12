@@ -54,6 +54,7 @@ export default function DashboardPage() {
   const current = pathname.split("/")[3] || "overview";
   const currentUser = getUser();
   const [team, setTeam] = useState<TeamContext | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   // 사이드바 배지: 진행 중 회의가 있을 때만 LIVE, 미완료 태스크 수
   const [hasLive, setHasLive] = useState(false);
   const [openTaskCount, setOpenTaskCount] = useState(0);
@@ -89,9 +90,9 @@ export default function DashboardPage() {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
+    <div className="dash-shell" style={{ display: "flex", height: "100vh" }}>
       {/* 사이드바 */}
-      <aside className="sidebar">
+      <aside className={`sidebar${sidebarOpen ? "" : " collapsed"}`}>
         <button className="sb-back" onClick={() => navigate("/home")}>
           <i className="ti ti-arrow-left" /> 내 그룹으로
         </button>
@@ -152,6 +153,14 @@ export default function DashboardPage() {
       {/* 메인 영역 */}
       <div className="main-area">
         <div className="main-top">
+          <button
+            className="sb-toggle"
+            onClick={() => setSidebarOpen((v) => !v)}
+          >
+            <i
+              className={`ti ${sidebarOpen ? "ti-layout-sidebar-left-collapse" : "ti-layout-sidebar-left-expand"}`}
+            />
+          </button>
           <div className="main-title">{TITLE[current] ?? "대시보드"}</div>
         </div>
         <div className="main-content scroll">
