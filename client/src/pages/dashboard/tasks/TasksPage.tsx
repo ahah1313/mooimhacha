@@ -496,11 +496,9 @@ export default function TasksPage() {
                 <div
                   className={`lrow-due ${danger ? "due-red" : warn ? "due-amber" : "due-soft"}`}
                 >
-                  {status === "완료"
-                    ? "완료"
-                    : dd.label
-                      ? `${dd.label}${dd.timeLabel ? ` ${dd.timeLabel}` : ""}`
-                      : "기한 없음"}
+                  {dd.label
+                    ? `${dd.label}${dd.timeLabel ? ` ${dd.timeLabel}` : ""}`
+                    : "기한 없음"}
                 </div>
                 <span className="tc-diff">
                   {"★".repeat(t.difficulty ?? 1)}
