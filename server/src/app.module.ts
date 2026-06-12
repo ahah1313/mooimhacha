@@ -7,6 +7,7 @@ import { User } from './entities/user.entity';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamSettings } from './entities/team-settings.entity';
+import { ContributionModule } from './contribution/contribution.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { TeamSettings } from './entities/team-settings.entity';
     }),
     AuthModule,
     TeamsModule,
+    ContributionModule,
   ],
 })
 export class AppModule {}
