@@ -190,14 +190,17 @@ export default function TasksPage() {
     setEditTarget(task);
     setEditDesc(task.description);
     setEditAssignee(task.assignee_id ? String(task.assignee_id) : "");
-    setEditDue(task.due_date?.slice(0, 10) ?? "");
-    if (!task.due_date || task.due_date.endsWith("T00:00:00.000Z")) {
-      setEditTime("");
-    } else {
+    if (task.due_date) {
       const dt = new Date(task.due_date);
+      setEditDue(
+        `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`,
+      );
       setEditTime(
         `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
       );
+    } else {
+      setEditDue("");
+      setEditTime("");
     }
     setEditStatus(API_TO_STATUS[task.status] ?? "할 일");
     setEditDifficulty(task.difficulty ?? 2);
