@@ -341,13 +341,24 @@ export default function OverviewPage() {
               <div key={t.id} className="task-mini">
                 <div className="chk-mini" />
                 <div style={{ flex: 1 }}>{t.description}</div>
-                {due && (
-                  <span style={{ color: due.color, fontWeight: 700 }}>
-                    {due.text}
-                  </span>
-                )}
-                <span style={{ color: "var(--text-soft)" }}>
-                  {derived.nameById.get(t.assignee_id ?? -1) ?? "-"}
+                <span
+                  style={{
+                    minWidth: 148,
+                    textAlign: "right",
+                    color: due ? due.color : "var(--text-soft)",
+                    fontWeight: due ? 700 : undefined,
+                  }}
+                >
+                  {due ? due.text : "—"}
+                </span>
+                <span
+                  style={{
+                    minWidth: 56,
+                    textAlign: "right",
+                    color: "var(--text-soft)",
+                  }}
+                >
+                  {derived.nameById.get(t.assignee_id ?? -1) ?? "—"}
                 </span>
               </div>
             );
