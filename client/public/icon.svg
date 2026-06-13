@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#1d9e75"/>
+
+  <!-- Bus body -->
+  <rect x="92" y="192" width="316" height="132" rx="22" fill="white"/>
+
+  <!-- Windows -->
+  <rect x="112" y="212" width="64" height="50" rx="9" fill="#84c9ae"/>
+  <rect x="192" y="212" width="64" height="50" rx="9" fill="#84c9ae"/>
+  <rect x="272" y="212" width="64" height="50" rx="9" fill="#84c9ae"/>
+
+  <!-- Chassis strip -->
+  <rect x="92" y="306" width="316" height="18" rx="4" fill="rgba(0,0,0,0.08)"/>
+
+  <!-- Wheels -->
+  <circle cx="162" cy="346" r="36" fill="#1a1a2e"/>
+  <circle cx="162" cy="346" r="15" fill="#3d3d5c"/>
+  <circle cx="346" cy="346" r="36" fill="#1a1a2e"/>
+  <circle cx="346" cy="346" r="15" fill="#3d3d5c"/>
+
+  <!-- Prohibition: white outline (separates red from bus/bg) -->
+  <circle cx="256" cy="248" r="114" fill="none" stroke="white" stroke-width="36"/>
+  <line x1="175" y1="167" x2="337" y2="329" stroke="white" stroke-width="36" stroke-linecap="round"/>
+
+  <!-- Prohibition: red symbol on top -->
+  <circle cx="256" cy="248" r="114" fill="none" stroke="#e53935" stroke-width="24"/>
+  <line x1="175" y1="167" x2="337" y2="329" stroke="#e53935" stroke-width="24" stroke-linecap="round"/>
+</svg>
