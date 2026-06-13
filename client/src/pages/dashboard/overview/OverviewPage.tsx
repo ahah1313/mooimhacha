@@ -240,7 +240,7 @@ export default function OverviewPage() {
           {
             lbl: "기한 초과 태스크",
             val: `${derived.overdue.length}개`,
-            sub: derived.overdue[0]?.description ?? "기한 초과 없음",
+            sub: derived.overdue.length ? "즉시 확인 필요" : "기한 초과 없음",
             valStyle: {
               color: derived.overdue.length ? "var(--coral)" : "var(--green)",
             },
