@@ -107,9 +107,8 @@ export default function OverviewPage() {
       );
     });
     const nameById = new Map(contrib.map((c) => [c.user_id, c.name]));
-    const active = meetings.find((m) => m.status === "active");
-    const nextScheduled = [...meetings]
-      .filter((m) => m.status === "scheduled")
+    const nextUnfinished = [...meetings]
+      .filter((m) => m.status !== "ended")
       .sort(
         (a, b) =>
           new Date(a.scheduled_at).getTime() -
@@ -129,8 +128,7 @@ export default function OverviewPage() {
       nextDue,
       urgent,
       nameById,
-      active,
-      nextScheduled,
+      nextUnfinished,
       recent,
     };
   }, [tasks, contrib, meetings]);
@@ -158,7 +156,7 @@ export default function OverviewPage() {
   const nextDueInfo = derived.nextDue
     ? dDayText(derived.nextDue.due_date)
     : null;
-  const focusMeeting = derived.active ?? derived.nextScheduled;
+  const focusMeeting = derived.nextUnfinished;
 
   return (
     <div>
@@ -267,14 +265,14 @@ export default function OverviewPage() {
           </div>
         </Card>
 
-        {/* 진행 중 회의: .mini-meeting 전용 레이아웃이라 Card 컴포넌트 미사용.
+        {/* 예정된 회의: .mini-meeting 전용 레이아웃이라 Card 컴포넌트 미사용.
             card-head/card-title 클래스는 헤더 스타일만 재사용. */}
         <div className="mini-meeting">
           <div className="card-head" style={{ padding: "0 0 10px" }}>
             <span className="card-title">
-              <i className="ti ti-clock" /> 진행 중 회의
+              <i className="ti ti-clock" /> 예정된 회의
             </span>
-            {derived.active ? (
+            {focusMeeting?.status === "active" ? (
               <span className="spill spill-live">🔴 진행</span>
             ) : (
               <span className="badge">예정</span>
@@ -302,7 +300,9 @@ export default function OverviewPage() {
             onClick={() => navigate(`/dashboard/${team?.id}/meeting`)}
           >
             <i className="ti ti-arrow-right" />{" "}
-            {derived.active ? "회의 참여하기" : "회의 관리로 이동"}
+            {focusMeeting?.status === "active"
+              ? "회의 참여하기"
+              : "회의 관리로 이동"}
           </button>
         </div>
       </div>
