@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import Card from "@/components/Card";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPatch } from "@/lib/api";
 import type { ActionItem, Meeting, TeamContribution } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 
@@ -178,6 +178,20 @@ export default function OverviewPage() {
     : null;
   const focusMeeting = derived.nextUnfinished;
 
+  async function toggleTask(t: ActionItem) {
+    const next = t.status === "done" ? "todo" : "done";
+    setTasks((prev) =>
+      prev.map((x) => (x.id === t.id ? { ...x, status: next } : x)),
+    );
+    try {
+      await apiPatch(`/action-items/${t.id}`, { status: next });
+    } catch {
+      setTasks((prev) =>
+        prev.map((x) => (x.id === t.id ? { ...x, status: t.status } : x)),
+      );
+    }
+  }
+
   return (
     <div>
       {derived.urgent.length > 0 ? (
@@ -339,7 +353,11 @@ export default function OverviewPage() {
             const due = taskDueLabel(t.due_date);
             return (
               <div key={t.id} className="task-mini">
-                <div className="chk-mini" />
+                <div
+                  className="chk-mini"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => void toggleTask(t)}
+                />
                 <div style={{ flex: 1 }}>{t.description}</div>
                 <span
                   style={{
