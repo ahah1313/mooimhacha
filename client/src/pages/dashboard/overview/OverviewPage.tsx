@@ -30,6 +30,20 @@ function dueLabel(due: string | null): { text: string; color: string } | null {
   };
 }
 
+function dDayText(due: string | null): { text: string; color: string } | null {
+  if (!due) return null;
+  const d = new Date(due);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+  if (diff < 0) return { text: `D+${Math.abs(diff)}`, color: "var(--coral)" };
+  if (diff === 0) return { text: "D-0", color: "var(--coral)" };
+  return {
+    text: `D-${diff}`,
+    color: diff <= 3 ? "var(--coral)" : "var(--text-main)",
+  };
+}
+
 function meetingDateLabel(m: Meeting): string {
   const d = new Date(m.scheduled_at);
   const today = new Date();
@@ -142,7 +156,7 @@ export default function OverviewPage() {
     ? Math.round((derived.done.length / derived.visible.length) * 100)
     : 0;
   const nextDueInfo = derived.nextDue
-    ? dueLabel(derived.nextDue.due_date)
+    ? dDayText(derived.nextDue.due_date)
     : null;
   const focusMeeting = derived.active ?? derived.nextScheduled;
 
@@ -174,8 +188,14 @@ export default function OverviewPage() {
           {
             lbl: "다음 마감 태스크",
             val: nextDueInfo?.text ?? "—",
-            sub: derived.nextDue?.description ?? "예정된 마감 없음",
-            valStyle: { fontSize: 20, paddingTop: 8 } as const,
+            sub: derived.nextDue?.due_date
+              ? `${new Date(derived.nextDue.due_date).getMonth() + 1}/${new Date(derived.nextDue.due_date).getDate()} · ${derived.nextDue.description ?? ""}`
+              : "예정된 마감 없음",
+            valStyle: {
+              fontSize: 20,
+              paddingTop: 8,
+              color: nextDueInfo?.color,
+            },
           },
         ].map((s) => (
           <div key={s.lbl} className="stat-card">
@@ -288,8 +308,8 @@ export default function OverviewPage() {
       </div>
 
       <div className="dash-grid2">
-        {/* 진행 중 태스크 */}
-        <Card icon="ti ti-checklist" title="진행 중 태스크">
+        {/* 미완료 태스크 */}
+        <Card icon="ti ti-checklist" title="미완료 태스크">
           <div style={{ padding: "2px 16px 14px" }}>
             {derived.visible.length === 0 && (
               <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>
@@ -324,34 +344,6 @@ export default function OverviewPage() {
                 </div>
               );
             })}
-          </div>
-        </Card>
-
-        {/* 최근 회의 */}
-        <Card icon="ti ti-calendar" title="최근 회의">
-          <div style={{ padding: "2px 16px 14px" }}>
-            {derived.recent.length === 0 && (
-              <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>
-                아직 회의 기록이 없습니다.
-              </div>
-            )}
-            {derived.recent.map((m) => (
-              <div key={m.id} className="meeting-mini">
-                <div className="mm-top">
-                  <span>{m.topic ?? "제목 없는 회의"}</span>
-                  {m.status === "active" ? (
-                    <span className="spill spill-live">진행 중</span>
-                  ) : m.status === "ended" ? (
-                    <span className="badge b-green">완료</span>
-                  ) : (
-                    <span className="badge">예정</span>
-                  )}
-                </div>
-                <div className="mm-meta">
-                  {meetingDateLabel(m)} · {m.total_minutes}분
-                </div>
-              </div>
-            ))}
           </div>
         </Card>
       </div>
