@@ -30,6 +30,22 @@ function dueLabel(due: string | null): { text: string; color: string } | null {
   };
 }
 
+function taskDueLabel(
+  due: string | null,
+): { text: string; color: string } | null {
+  if (!due) return null;
+  const d = new Date(due);
+  const isPast = d < new Date();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const h = d.getHours();
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return {
+    text: `${m}/${day} ${h}:${min}`,
+    color: isPast ? "var(--coral)" : "var(--text-soft)",
+  };
+}
+
 function dDayText(due: string | null): { text: string; color: string } | null {
   if (!due) return null;
   const d = new Date(due);
@@ -307,46 +323,40 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      <div className="dash-grid2">
-        {/* 미완료 태스크 */}
-        <Card icon="ti ti-checklist" title="미완료 태스크">
-          <div style={{ padding: "2px 16px 14px" }}>
-            {derived.visible.length === 0 && (
-              <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>
-                등록된 태스크가 없습니다.
-              </div>
-            )}
-            {[...derived.open, ...derived.done].slice(0, 4).map((t) => {
-              const due = dueLabel(t.due_date);
-              const done = t.status === "done";
-              return (
-                <div key={t.id} className="task-mini">
-                  <div className={`chk-mini ${done ? "done" : ""}`}>
-                    {done && <i className="ti ti-check" />}
-                  </div>
-                  <div
-                    style={{
-                      flex: 1,
-                      textDecoration: done ? "line-through" : undefined,
-                      color: done ? "var(--text-soft)" : undefined,
-                    }}
-                  >
-                    {t.description}
-                  </div>
-                  {!done && due && (
-                    <span style={{ color: due.color, fontWeight: 700 }}>
-                      {due.text}
-                    </span>
-                  )}
-                  <span style={{ color: "var(--text-soft)" }}>
-                    {derived.nameById.get(t.assignee_id ?? -1) ?? ""}
+      {/* 미완료 태스크 */}
+      <Card icon="ti ti-checklist" title="미완료 태스크">
+        <div style={{ padding: "2px 16px 14px" }}>
+          {derived.open.length === 0 && (
+            <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>
+              미완료 태스크가 없습니다.
+            </div>
+          )}
+          {derived.open.slice(0, 10).map((t) => {
+            const due = taskDueLabel(t.due_date);
+            return (
+              <div key={t.id} className="task-mini">
+                <div className="chk-mini" />
+                <div style={{ flex: 1 }}>{t.description}</div>
+                {due && (
+                  <span style={{ color: due.color, fontWeight: 700 }}>
+                    {due.text}
                   </span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
+                )}
+                <span style={{ color: "var(--text-soft)" }}>
+                  {derived.nameById.get(t.assignee_id ?? -1) ?? "-"}
+                </span>
+              </div>
+            );
+          })}
+          {derived.open.length > 10 && (
+            <div
+              style={{ fontSize: 12, color: "var(--text-soft)", marginTop: 8 }}
+            >
+              +{derived.open.length - 10}개
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
