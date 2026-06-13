@@ -213,7 +213,7 @@ export default function TasksPage() {
     try {
       await apiPatch(`/action-items/${editTarget.id}`, {
         description: editDesc.trim(),
-        assignee_id: editAssignee ? Number(editAssignee) : undefined,
+        assignee_id: editAssignee ? Number(editAssignee) : null,
         due_date: editDue
           ? new Date(`${editDue}T${editTime || "23:59"}`).toISOString()
           : undefined,
