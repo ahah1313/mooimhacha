@@ -49,16 +49,29 @@ function relTime(iso: string): string {
 function dueInfo(due: string | null): { text: string; cls: string } | null {
   if (!due) return null;
   const d = new Date(due);
+  const dueDay = new Date(due);
+  dueDay.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
-  if (diff < 0) return { text: "기한 초과", cls: "due-red" };
-  if (diff === 0) return { text: "오늘 마감", cls: "due-red" };
-  if (diff === 1) return { text: "내일 마감", cls: "due-red" };
-  return {
-    text: `${d.getMonth() + 1}월 ${d.getDate()}일`,
-    cls: diff <= 3 ? "due-amber" : "due-soft",
-  };
+  const diff = Math.round((dueDay.getTime() - today.getTime()) / 86400000);
+  const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const dow = DAYS[d.getDay()];
+  const h = d.getHours();
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const ampm = h < 12 ? "오전" : "오후";
+  const h12 = h % 12 || 12;
+  const dDay = diff < 0 ? `D+${Math.abs(diff)}` : `D-${diff}`;
+  const cls =
+    diff < 0
+      ? "due-red"
+      : diff <= 1
+        ? "due-red"
+        : diff <= 3
+          ? "due-amber"
+          : "due-soft";
+  return { text: `${m}/${day}(${dow}) ${ampm} ${h12}:${min} ${dDay}`, cls };
 }
 
 // 알림 종류 → 아이콘/색
