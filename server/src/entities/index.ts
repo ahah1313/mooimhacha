@@ -2,8 +2,6 @@ import { User } from './user.entity';
 import { Team } from './team.entity';
 import { TeamMembership } from './team-membership.entity';
 import { TeamSettings } from './team-settings.entity';
-import { Project } from './project.entity';
-import { Milestone } from './milestone.entity';
 import { Meeting } from './meeting.entity';
 import { Agenda } from './agenda.entity';
 import { Utterance } from './utterance.entity';
@@ -20,8 +18,6 @@ export const ALL_ENTITIES = [
   Team,
   TeamMembership,
   TeamSettings,
-  Project,
-  Milestone,
   Meeting,
   Agenda,
   Utterance,
@@ -38,8 +34,6 @@ export {
   Team,
   TeamMembership,
   TeamSettings,
-  Project,
-  Milestone,
   Meeting,
   Agenda,
   Utterance,

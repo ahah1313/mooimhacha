@@ -242,7 +242,6 @@
 }
 
 .join-box {
-  margin-top: 16px;
   background: var(--surface-2);
   border: 1px solid var(--border-2);
   border-radius: 15px;
@@ -385,7 +384,7 @@
 
 .meet-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 13px;
 }
 .meet {

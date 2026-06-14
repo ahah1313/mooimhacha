@@ -49,16 +49,29 @@ function relTime(iso: string): string {
 function dueInfo(due: string | null): { text: string; cls: string } | null {
   if (!due) return null;
   const d = new Date(due);
+  const dueDay = new Date(due);
+  dueDay.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
-  if (diff < 0) return { text: "기한 초과", cls: "due-red" };
-  if (diff === 0) return { text: "오늘 마감", cls: "due-red" };
-  if (diff === 1) return { text: "내일 마감", cls: "due-red" };
-  return {
-    text: `${d.getMonth() + 1}월 ${d.getDate()}일`,
-    cls: diff <= 3 ? "due-amber" : "due-soft",
-  };
+  const diff = Math.round((dueDay.getTime() - today.getTime()) / 86400000);
+  const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const dow = DAYS[d.getDay()];
+  const h = d.getHours();
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const ampm = h < 12 ? "오전" : "오후";
+  const h12 = h % 12 || 12;
+  const dDay = diff < 0 ? `D+${Math.abs(diff)}` : `D-${diff}`;
+  const cls =
+    diff < 0
+      ? "due-red"
+      : diff <= 1
+        ? "due-red"
+        : diff <= 3
+          ? "due-amber"
+          : "due-soft";
+  return { text: `${m}/${day}(${dow}) ${ampm} ${h12}:${min} ${dDay}`, cls };
 }
 
 // 알림 종류 → 아이콘/색
@@ -147,7 +160,9 @@ export default function HomePage() {
       if (!alive) return;
       const ok = results
         .filter(
-          (r): r is PromiseFulfilledResult<{
+          (
+            r,
+          ): r is PromiseFulfilledResult<{
             team: Team;
             tasks: MyTask[];
             meetings: UpcomingMeeting[];
@@ -299,11 +314,10 @@ export default function HomePage() {
                   </div>
                 )}
                 {notis.slice(0, 8).map((n) => {
-                  const st =
-                    NOTI_STYLE[n.type] ?? {
-                      icon: "ti ti-bell",
-                      color: "var(--text-soft)",
-                    };
+                  const st = NOTI_STYLE[n.type] ?? {
+                    icon: "ti ti-bell",
+                    color: "var(--text-soft)",
+                  };
                   return (
                     <div
                       key={n.id}
@@ -488,8 +502,16 @@ export default function HomePage() {
                 <div className="ng-txt">새 그룹 만들기</div>
               </div>
             </div>
+          </div>
 
-            <div className="join-box">
+          {/* 내 현황 */}
+          <div className="reveal" style={{ animationDelay: ".16s" }}>
+            <div className="sec-head">
+              <div className="sec-title">
+                <i className="ti ti-layout-grid" /> 내 현황
+              </div>
+            </div>
+            <div className="join-box" style={{ marginBottom: 14 }}>
               <div className="join-label">
                 <i className="ti ti-key" /> 초대코드로 참가
               </div>
@@ -506,10 +528,6 @@ export default function HomePage() {
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* 내 태스크 + 최근 활동 */}
-          <div className="reveal" style={{ animationDelay: ".16s" }}>
             <Card
               icon="ti ti-checklist"
               title="내 태스크"
@@ -579,11 +597,10 @@ export default function HomePage() {
                   </div>
                 )}
                 {notis.slice(0, 4).map((n) => {
-                  const st =
-                    NOTI_STYLE[n.type] ?? {
-                      icon: "ti ti-bell",
-                      color: "var(--text-soft)",
-                    };
+                  const st = NOTI_STYLE[n.type] ?? {
+                    icon: "ti ti-bell",
+                    color: "var(--text-soft)",
+                  };
                   return (
                     <div key={n.id} className="activity-row">
                       <div
@@ -597,94 +614,92 @@ export default function HomePage() {
                 })}
               </div>
             </Card>
-          </div>
-        </div>
 
-        {/* 예정된 회의 */}
-        <div
-          className="reveal"
-          style={{ animationDelay: ".22s", marginTop: 18 }}
-        >
-          <div className="sec-head">
-            <div className="sec-title">
-              <i className="ti ti-calendar-event" /> 예정된 회의
-            </div>
-            <span className="sec-count">{meetings.length}개</span>
-          </div>
-          <div className="meet-grid">
-            {meetings.length === 0 && (
-              <div
-                style={{
-                  padding: "16px 4px",
-                  fontSize: 12.5,
-                  color: "var(--text-soft)",
-                }}
-              >
-                예정된 회의가 없습니다. 그룹 대시보드에서 회의를 만들어 보세요.
+            <Card
+              icon="ti ti-calendar-event"
+              title="예정된 회의"
+              extra={<span className="card-link">{meetings.length}개</span>}
+              style={{ marginTop: 14 }}
+            >
+              <div className="meet-grid" style={{ padding: "6px 14px 14px" }}>
+                {meetings.length === 0 && (
+                  <div
+                    style={{
+                      padding: "16px 4px",
+                      fontSize: 12.5,
+                      color: "var(--text-soft)",
+                    }}
+                  >
+                    예정된 회의가 없습니다. 그룹 대시보드에서 회의를 만들어
+                    보세요.
+                  </div>
+                )}
+                {meetings.map((m) => {
+                  const live = m.status === "active";
+                  const d = new Date(m.scheduled_at);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const dday = Math.round(
+                    (new Date(d).setHours(0, 0, 0, 0) - today.getTime()) /
+                      86400000,
+                  );
+                  const label =
+                    dday <= 0 ? "오늘" : dday === 1 ? "내일" : `${dday}일 후`;
+                  const time = d.toLocaleTimeString("ko-KR", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  });
+                  return (
+                    <div
+                      key={m.id}
+                      className={`meet ${live ? "live" : ""} ${!live && dday <= 2 ? "soon" : ""}`}
+                      onClick={() =>
+                        navigate(`/dashboard/${m.team_id}/meeting`)
+                      }
+                    >
+                      <div className="meet-top">
+                        {live ? (
+                          <span className="badge b-coral">
+                            <span className="live-dot" /> 진행 중
+                          </span>
+                        ) : (
+                          <div className="date-chip">
+                            <span className="d">{d.getDate()}</span>
+                            <span className="m">{d.getMonth() + 1}월</span>
+                          </div>
+                        )}
+                        <span className={`badge ${m.groupCls}`}>{m.group}</span>
+                      </div>
+                      <div className="meet-title">
+                        {m.topic ?? "제목 없는 회의"}
+                      </div>
+                      <div className="meet-meta">
+                        <span>
+                          <i className="ti ti-clock" /> {time}
+                        </span>
+                        <span>
+                          <i className="ti ti-hourglass" /> {m.total_minutes}분
+                        </span>
+                      </div>
+                      <div className="meet-foot">
+                        {live ? (
+                          <button className="btn btn-danger btn-sm btn-full">
+                            <i className="ti ti-arrow-right" /> 회의 참여
+                          </button>
+                        ) : (
+                          <div
+                            className="btn btn-sm btn-full"
+                            style={{ cursor: "default" }}
+                          >
+                            <i className="ti ti-calendar-plus" /> {label}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-            {meetings.map((m) => {
-              const live = m.status === "active";
-              const d = new Date(m.scheduled_at);
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const dday = Math.round(
-                (new Date(d).setHours(0, 0, 0, 0) - today.getTime()) /
-                  86400000,
-              );
-              const label =
-                dday <= 0 ? "오늘" : dday === 1 ? "내일" : `${dday}일 후`;
-              const time = d.toLocaleTimeString("ko-KR", {
-                hour: "numeric",
-                minute: "2-digit",
-              });
-              return (
-                <div
-                  key={m.id}
-                  className={`meet ${live ? "live" : ""} ${!live && dday <= 2 ? "soon" : ""}`}
-                  onClick={() => navigate(`/dashboard/${m.team_id}/meeting`)}
-                >
-                  <div className="meet-top">
-                    {live ? (
-                      <span className="badge b-coral">
-                        <span className="live-dot" /> 진행 중
-                      </span>
-                    ) : (
-                      <div className="date-chip">
-                        <span className="d">{d.getDate()}</span>
-                        <span className="m">{d.getMonth() + 1}월</span>
-                      </div>
-                    )}
-                    <span className={`badge ${m.groupCls}`}>{m.group}</span>
-                  </div>
-                  <div className="meet-title">
-                    {m.topic ?? "제목 없는 회의"}
-                  </div>
-                  <div className="meet-meta">
-                    <span>
-                      <i className="ti ti-clock" /> {time}
-                    </span>
-                    <span>
-                      <i className="ti ti-hourglass" /> {m.total_minutes}분
-                    </span>
-                  </div>
-                  <div className="meet-foot">
-                    {live ? (
-                      <button className="btn btn-danger btn-sm btn-full">
-                        <i className="ti ti-arrow-right" /> 회의 참여
-                      </button>
-                    ) : (
-                      <div
-                        className="btn btn-sm btn-full"
-                        style={{ cursor: "default" }}
-                      >
-                        <i className="ti ti-calendar-plus" /> {label}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            </Card>
           </div>
         </div>
       </div>

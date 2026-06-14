@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import Card from "@/components/Card";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPatch } from "@/lib/api";
+import { getUser } from "@/lib/auth";
 import type { ActionItem, Meeting, TeamContribution } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 
@@ -30,6 +31,41 @@ function dueLabel(due: string | null): { text: string; color: string } | null {
   };
 }
 
+function taskDueLabel(
+  due: string | null,
+): { text: string; color: string } | null {
+  if (!due) return null;
+  const d = new Date(due);
+  const isPast = d < new Date();
+  const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const dow = DAYS[d.getDay()];
+  const h = d.getHours();
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const ampm = h < 12 ? "오전" : "오후";
+  const h12 = h % 12 || 12;
+  return {
+    text: `${m}/${day}(${dow}) ${ampm} ${h12}:${min}`,
+    color: isPast ? "var(--coral)" : "var(--text-soft)",
+  };
+}
+
+function dDayText(due: string | null): { text: string; color: string } | null {
+  if (!due) return null;
+  const dueDay = new Date(due);
+  dueDay.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((dueDay.getTime() - today.getTime()) / 86400000);
+  if (diff < 0) return { text: `D+${Math.abs(diff)}`, color: "var(--coral)" };
+  if (diff === 0) return { text: "D-0", color: "var(--coral)" };
+  return {
+    text: `D-${diff}`,
+    color: diff <= 3 ? "var(--coral)" : "var(--text-main)",
+  };
+}
+
 function meetingDateLabel(m: Meeting): string {
   const d = new Date(m.scheduled_at);
   const today = new Date();
@@ -44,6 +80,7 @@ function meetingDateLabel(m: Meeting): string {
 export default function OverviewPage() {
   const navigate = useNavigate();
   const team = useOutletContext<TeamContext | null>();
+  const currentUser = getUser();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [contrib, setContrib] = useState<TeamContribution[]>([]);
   const [tasks, setTasks] = useState<ActionItem[]>([]);
@@ -53,7 +90,9 @@ export default function OverviewPage() {
     let alive = true;
     void Promise.allSettled([
       apiGet<Meeting[]>(`/meetings?team_id=${team.id}`),
-      apiGet<{ members: TeamContribution[] }>(`/teams/${team.id}/contributions`),
+      apiGet<{ members: TeamContribution[] }>(
+        `/teams/${team.id}/contributions`,
+      ),
       apiGet<ActionItem[]>(`/action-items?team_id=${team.id}`),
     ]).then(([ms, cs, ts]) => {
       if (!alive) return;
@@ -76,25 +115,27 @@ export default function OverviewPage() {
     const visible = tasks.filter((t) => t.status !== "cancelled");
     const done = visible.filter((t) => t.status === "done");
     const open = visible.filter((t) => t.status !== "done");
+    const now = new Date();
+    const overdue = open.filter(
+      (t) => t.due_date && new Date(t.due_date) < now,
+    );
     const nextDue = open
-      .filter((t) => t.due_date)
+      .filter((t) => t.due_date && t.assignee_id === currentUser?.id)
       .sort(
         (a, b) =>
           new Date(a.due_date as string).getTime() -
           new Date(b.due_date as string).getTime(),
       )[0];
-    const freeRiders = contrib.filter(
-      (c) => c.composite_score != null && c.composite_score < 0.1,
-    );
     // 경보: 오늘/내일 마감인데 미시작(todo) 태스크 — 담당자별 묶음의 첫 항목
     const urgent = open.filter((t) => {
       const d = dueLabel(t.due_date);
-      return t.status === "todo" && d && (d.text === "오늘" || d.text === "내일");
+      return (
+        t.status === "todo" && d && (d.text === "오늘" || d.text === "내일")
+      );
     });
     const nameById = new Map(contrib.map((c) => [c.user_id, c.name]));
-    const active = meetings.find((m) => m.status === "active");
-    const nextScheduled = [...meetings]
-      .filter((m) => m.status === "scheduled")
+    const nextUnfinished = [...meetings]
+      .filter((m) => m.status !== "ended")
       .sort(
         (a, b) =>
           new Date(a.scheduled_at).getTime() -
@@ -111,12 +152,11 @@ export default function OverviewPage() {
       visible,
       done,
       open,
+      overdue,
       nextDue,
-      freeRiders,
       urgent,
       nameById,
-      active,
-      nextScheduled,
+      nextUnfinished,
       recent,
     };
   }, [tasks, contrib, meetings]);
@@ -141,8 +181,24 @@ export default function OverviewPage() {
   const taskPct = derived.visible.length
     ? Math.round((derived.done.length / derived.visible.length) * 100)
     : 0;
-  const nextDueInfo = derived.nextDue ? dueLabel(derived.nextDue.due_date) : null;
-  const focusMeeting = derived.active ?? derived.nextScheduled;
+  const nextDueInfo = derived.nextDue
+    ? dDayText(derived.nextDue.due_date)
+    : null;
+  const focusMeeting = derived.nextUnfinished;
+
+  async function toggleTask(t: ActionItem) {
+    const next = t.status === "done" ? "todo" : "done";
+    setTasks((prev) =>
+      prev.map((x) => (x.id === t.id ? { ...x, status: next } : x)),
+    );
+    try {
+      await apiPatch(`/action-items/${t.id}`, { status: next });
+    } catch {
+      setTasks((prev) =>
+        prev.map((x) => (x.id === t.id ? { ...x, status: t.status } : x)),
+      );
+    }
+  }
 
   return (
     <div>
@@ -153,11 +209,6 @@ export default function OverviewPage() {
             "담당자 미지정"}
           님의 태스크 {derived.urgent.length}개가 곧 마감입니다. 아직 시작하지
           않았어요.
-        </div>
-      ) : derived.freeRiders.length > 0 ? (
-        <div className="alert-bar">
-          <i className="ti ti-alert-triangle" /> {derived.freeRiders[0].name}
-          님의 기여도가 10% 미만입니다. 역할 분배를 점검해 보세요.
         </div>
       ) : null}
 
@@ -170,29 +221,29 @@ export default function OverviewPage() {
             sub: "이번 프로젝트",
           },
           {
-            lbl: "태스크 진행률",
+            lbl: "총 태스크 진행률",
             val: `${taskPct}%`,
             sub: `${derived.done.length} / ${derived.visible.length} 완료`,
           },
           {
-            lbl: "다음 마감",
+            lbl: "내 다음 마감 태스크",
             val: nextDueInfo?.text ?? "—",
-            sub: derived.nextDue?.description ?? "예정된 마감 없음",
-            valStyle: { fontSize: 20, paddingTop: 8 } as const,
+            sub: derived.nextDue?.due_date
+              ? `${new Date(derived.nextDue.due_date).getMonth() + 1}/${new Date(derived.nextDue.due_date).getDate()} · ${derived.nextDue.description ?? ""}`
+              : "예정된 마감 없음",
+            valStyle: {
+              fontSize: 20,
+              paddingTop: 8,
+              color: nextDueInfo?.color,
+            },
           },
           {
-            lbl: "무임승차 경보",
-            val: `${derived.freeRiders.length}명`,
-            sub: derived.freeRiders[0]
-              ? `${derived.freeRiders[0].name} · 기여도 ${Math.round(
-                  (derived.freeRiders[0].composite_score ?? 0) * 100,
-                )}%`
-              : "이상 없음",
+            lbl: "기한 초과 태스크",
+            val: `${derived.overdue.length}개`,
+            sub: derived.overdue.length ? "즉시 확인 필요" : "기한 초과 없음",
             valStyle: {
-              color: derived.freeRiders.length
-                ? "var(--coral)"
-                : undefined,
-            } as const,
+              color: derived.overdue.length ? "var(--coral)" : "var(--green)",
+            },
           },
         ].map((s) => (
           <div key={s.lbl} className="stat-card">
@@ -244,11 +295,16 @@ export default function OverviewPage() {
                   </span>
                   <span
                     className="c-pct"
-                    style={pct == null ? { color: "var(--text-soft)" } : undefined}
+                    style={
+                      pct == null ? { color: "var(--text-soft)" } : undefined
+                    }
                   >
                     {pct == null ? "-%" : `${pct}%`}
                   </span>
-                  <span className="c-task" style={{ color: "var(--text-soft)" }}>
+                  <span
+                    className="c-task"
+                    style={{ color: "var(--text-soft)" }}
+                  >
                     {myTasks.length
                       ? `태스크 ${myDone.length}/${myTasks.length}`
                       : "-"}
@@ -259,21 +315,22 @@ export default function OverviewPage() {
           </div>
         </Card>
 
-        {/* 진행 중 회의: .mini-meeting 전용 레이아웃이라 Card 컴포넌트 미사용.
+        {/* 예정된 회의: .mini-meeting 전용 레이아웃이라 Card 컴포넌트 미사용.
             card-head/card-title 클래스는 헤더 스타일만 재사용. */}
         <div className="mini-meeting">
           <div className="card-head" style={{ padding: "0 0 10px" }}>
             <span className="card-title">
-              <i className="ti ti-clock" /> 진행 중 회의
+              <i className="ti ti-clock" /> 예정된 회의
             </span>
-            {derived.active ? (
+            {focusMeeting?.status === "active" ? (
               <span className="spill spill-live">🔴 진행</span>
             ) : (
               <span className="badge">예정</span>
             )}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>
-            {focusMeeting?.topic ?? (focusMeeting ? "제목 없는 회의" : "예정된 회의 없음")}
+            {focusMeeting?.topic ??
+              (focusMeeting ? "제목 없는 회의" : "예정된 회의 없음")}
           </div>
           <div style={{ fontSize: 11.5, color: "var(--text-soft)" }}>
             {focusMeeting
@@ -293,79 +350,62 @@ export default function OverviewPage() {
             onClick={() => navigate(`/dashboard/${team?.id}/meeting`)}
           >
             <i className="ti ti-arrow-right" />{" "}
-            {derived.active ? "회의 참여하기" : "회의 관리로 이동"}
+            {focusMeeting?.status === "active"
+              ? "회의 참여하기"
+              : "회의 관리로 이동"}
           </button>
         </div>
       </div>
 
-      <div className="dash-grid2">
-        {/* 진행 중 태스크 */}
-        <Card icon="ti ti-checklist" title="진행 중 태스크">
-          <div style={{ padding: "2px 16px 14px" }}>
-            {derived.visible.length === 0 && (
-              <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>
-                등록된 태스크가 없습니다.
+      {/* 미완료 태스크 */}
+      <Card icon="ti ti-checklist" title="미완료 태스크">
+        <div style={{ padding: "2px 16px 14px" }}>
+          {derived.open.length === 0 && (
+            <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>
+              미완료 태스크가 없습니다.
+            </div>
+          )}
+          {derived.open.slice(0, 10).map((t) => {
+            const due = taskDueLabel(t.due_date);
+            return (
+              <div key={t.id} className="task-mini">
+                <div
+                  className="chk-mini"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => void toggleTask(t)}
+                />
+                <div style={{ flex: 1 }}>{t.description}</div>
+                <span
+                  style={{
+                    minWidth: 148,
+                    textAlign: "right",
+                    color: due ? due.color : "var(--text-soft)",
+                    fontWeight: due ? 700 : undefined,
+                  }}
+                >
+                  {due ? due.text : "—"}
+                </span>
+                <span
+                  style={{
+                    minWidth: 56,
+                    textAlign: "right",
+                    color: "var(--text-soft)",
+                  }}
+                >
+                  {derived.nameById.get(t.assignee_id ?? -1) ?? "—"}
+                </span>
               </div>
-            )}
-            {[...derived.open, ...derived.done].slice(0, 4).map((t) => {
-              const due = dueLabel(t.due_date);
-              const done = t.status === "done";
-              return (
-                <div key={t.id} className="task-mini">
-                  <div className={`chk-mini ${done ? "done" : ""}`}>
-                    {done && <i className="ti ti-check" />}
-                  </div>
-                  <div
-                    style={{
-                      flex: 1,
-                      textDecoration: done ? "line-through" : undefined,
-                      color: done ? "var(--text-soft)" : undefined,
-                    }}
-                  >
-                    {t.description}
-                  </div>
-                  {!done && due && (
-                    <span style={{ color: due.color, fontWeight: 700 }}>
-                      {due.text}
-                    </span>
-                  )}
-                  <span style={{ color: "var(--text-soft)" }}>
-                    {derived.nameById.get(t.assignee_id ?? -1) ?? ""}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        {/* 최근 회의 */}
-        <Card icon="ti ti-calendar" title="최근 회의">
-          <div style={{ padding: "2px 16px 14px" }}>
-            {derived.recent.length === 0 && (
-              <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>
-                아직 회의 기록이 없습니다.
-              </div>
-            )}
-            {derived.recent.map((m) => (
-              <div key={m.id} className="meeting-mini">
-                <div className="mm-top">
-                  <span>{m.topic ?? "제목 없는 회의"}</span>
-                  {m.status === "active" ? (
-                    <span className="spill spill-live">진행 중</span>
-                  ) : m.status === "ended" ? (
-                    <span className="badge b-green">완료</span>
-                  ) : (
-                    <span className="badge">예정</span>
-                  )}
-                </div>
-                <div className="mm-meta">
-                  {meetingDateLabel(m)} · {m.total_minutes}분
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+            );
+          })}
+          {derived.open.length > 10 && (
+            <div
+              style={{ fontSize: 12, color: "var(--text-soft)", marginTop: 8 }}
+            >
+              +{derived.open.length - 10}개
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

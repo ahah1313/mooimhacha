@@ -6,7 +6,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { TeamsModule } from './teams/teams.module';
-import { ContributionModule } from './contribution/contribution.module';
 import { ContributionsModule } from './contributions/contributions.module';
 import { MeetingsModule } from './meetings/meetings.module';
 import { ReportsModule } from './reports/reports.module';
@@ -15,7 +14,6 @@ import { AgendasModule } from './agendas/agendas.module';
 import { DecisionsModule } from './decisions/decisions.module';
 import { ActionItemsModule } from './action-items/action-items.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { ProjectsModule } from './projects/projects.module';
 import { EventsModule } from './events/events.module';
 import { HealthController } from './health.controller';
 import { buildTypeOrmOptions } from './data-source';
@@ -38,7 +36,6 @@ import { buildTypeOrmOptions } from './data-source';
     }),
     AuthModule,
     TeamsModule,
-    ContributionModule,
     ContributionsModule,
     MeetingsModule,
     ReportsModule,
@@ -47,7 +44,6 @@ import { buildTypeOrmOptions } from './data-source';
     DecisionsModule,
     ActionItemsModule,
     NotificationsModule,
-    ProjectsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
