@@ -476,7 +476,7 @@ export default function MeetingPage() {
           "error",
         );
       } else {
-        showToast("회의가 시작되었습니다");
+        showToast("회의가 시작됐어요. 🎧 헤드셋 사용을 권장드립니다");
       }
       await loadMeetings();
     } catch (e) {
@@ -608,14 +608,6 @@ export default function MeetingPage() {
                           <div className="mcard-meta">
                             {meetingMeta(m, team?.member_count ?? 0)}
                           </div>
-                          {sum && sum.pending_count > 0 && (
-                            <div className="mcard-att-row">
-                              <span className="mcard-pending">
-                                <i className="ti ti-alert-circle" /> 미처리{" "}
-                                {sum.pending_count}건
-                              </span>
-                            </div>
-                          )}
                         </div>
                       );
                     })}

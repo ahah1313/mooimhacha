@@ -135,6 +135,23 @@
   background: var(--coral);
   color: #fff;
 }
+/* 처리할 일 알림(!) — 우측 정렬, 배지와 공존 시 배지가 옆에 붙음 */
+.nav-alert {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--coral);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.nav-alert + .nbadge {
+  margin-left: 5px;
+}
 
 .sb-members {
   margin-top: 18px;
@@ -456,13 +473,6 @@
   color: var(--text-soft);
   margin-top: 3px;
 }
-.mcard-att-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
 .mcard-att {
   font-size: 9.5px;
   font-weight: 700;
@@ -470,17 +480,6 @@
   border-radius: 999px;
   flex: 0 0 auto;
   white-space: nowrap;
-}
-.mcard-pending {
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--coral);
-  background: var(--coral-soft);
-  padding: 1px 7px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
 }
 .spill {
   font-size: 9.5px;

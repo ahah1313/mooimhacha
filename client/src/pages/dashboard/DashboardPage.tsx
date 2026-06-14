@@ -13,7 +13,12 @@ import { useState, useEffect } from "react";
 import { getUser } from "@/lib/auth";
 import { apiFetch, authHeader } from "@/lib/apiFetch";
 import { apiGet } from "@/lib/api";
-import type { ActionItem, Meeting } from "@/lib/types";
+import type {
+  ActionItem,
+  Meeting,
+  AttendanceSummary,
+  TaskExtension,
+} from "@/lib/types";
 import OverviewPage from "./overview/OverviewPage";
 import MeetingPage from "./meeting/MeetingPage";
 import TasksPage from "./tasks/TasksPage";
@@ -58,6 +63,9 @@ export default function DashboardPage() {
   // 사이드바 배지: 진행 중 회의가 있을 때만 LIVE, 미완료 태스크 수
   const [hasLive, setHasLive] = useState(false);
   const [openTaskCount, setOpenTaskCount] = useState(0);
+  // 처리할 일 알림(!): 회의=결석 동의 미처리, 태스크=팀장 연장 요청 대기
+  const [hasAbsenceTodo, setHasAbsenceTodo] = useState(false);
+  const [hasExtensionTodo, setHasExtensionTodo] = useState(false);
 
   useEffect(() => {
     if (!teamId) return;
@@ -70,7 +78,9 @@ export default function DashboardPage() {
     void Promise.allSettled([
       apiGet<Meeting[]>(`/meetings?team_id=${teamId}`),
       apiGet<ActionItem[]>(`/action-items?team_id=${teamId}`),
-    ]).then(([ms, ts]) => {
+      apiGet<AttendanceSummary[]>(`/teams/${teamId}/attendance-summary`),
+      apiGet<TaskExtension[]>(`/teams/${teamId}/extensions?status=pending`),
+    ]).then(([ms, ts, att, ext]) => {
       if (ms.status === "fulfilled")
         setHasLive(ms.value.some((m) => m.status === "active"));
       if (ts.status === "fulfilled")
@@ -79,6 +89,9 @@ export default function DashboardPage() {
             (t) => t.status === "todo" || t.status === "in_progress",
           ).length,
         );
+      if (att.status === "fulfilled")
+        setHasAbsenceTodo(att.value.some((s) => s.pending_count > 0));
+      if (ext.status === "fulfilled") setHasExtensionTodo(ext.value.length > 0);
     });
   }, [teamId]);
 
@@ -87,6 +100,13 @@ export default function DashboardPage() {
     if (key === "tasks" && openTaskCount > 0)
       return { text: String(openTaskCount), live: false };
     return null;
+  };
+
+  // 처리할 일 알림(!) 표시 여부
+  const alertFor = (key: string): boolean => {
+    if (key === "meeting") return hasAbsenceTodo;
+    if (key === "tasks") return team?.my_role === "leader" && hasExtensionTodo;
+    return false;
   };
 
   return (
@@ -110,6 +130,7 @@ export default function DashboardPage() {
         <div className="sb-sec">메뉴</div>
         {NAV_ITEMS.map((n) => {
           const badge = badgeFor(n.key);
+          const alert = alertFor(n.key);
           return (
             <div
               key={n.key}
@@ -118,6 +139,11 @@ export default function DashboardPage() {
             >
               <i className={`ti ${n.icon}`} />
               {n.label}
+              {alert && (
+                <span className="nav-alert" title="처리할 일이 있어요">
+                  !
+                </span>
+              )}
               {badge && (
                 <span className={`nbadge ${badge.live ? "live" : ""}`}>
                   {badge.text}
