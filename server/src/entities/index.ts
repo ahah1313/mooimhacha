@@ -11,6 +11,8 @@ import { PresenceEvent } from './presence-event.entity';
 import { AnomalyEvent } from './anomaly-event.entity';
 import { ContributionScore } from './contribution-score.entity';
 import { Notification } from './notification.entity';
+import { MeetingAbsence } from './meeting-absence.entity';
+import { AbsenceConsent } from './absence-consent.entity';
 
 // TypeOrmModule.forRoot 의 entities 등록용 단일 출처
 export const ALL_ENTITIES = [
@@ -27,6 +29,8 @@ export const ALL_ENTITIES = [
   AnomalyEvent,
   ContributionScore,
   Notification,
+  MeetingAbsence,
+  AbsenceConsent,
 ];
 
 export {
@@ -43,4 +47,6 @@ export {
   AnomalyEvent,
   ContributionScore,
   Notification,
+  MeetingAbsence,
+  AbsenceConsent,
 };

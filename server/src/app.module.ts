@@ -14,6 +14,7 @@ import { AgendasModule } from './agendas/agendas.module';
 import { DecisionsModule } from './decisions/decisions.module';
 import { ActionItemsModule } from './action-items/action-items.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MeetingAbsencesModule } from './meeting-absences/meeting-absences.module';
 import { EventsModule } from './events/events.module';
 import { HealthController } from './health.controller';
 import { buildTypeOrmOptions } from './data-source';
@@ -44,6 +45,7 @@ import { buildTypeOrmOptions } from './data-source';
     DecisionsModule,
     ActionItemsModule,
     NotificationsModule,
+    MeetingAbsencesModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

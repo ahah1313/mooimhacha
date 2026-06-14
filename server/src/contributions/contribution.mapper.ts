@@ -208,7 +208,7 @@ export function deriveMemberData(
       team_size: req.participant_user_ids.length,
       audio_loss_pct: lossDenom > 0 ? (capLoss / lossDenom) * 100 : 0,
       speech_confidence: confCount > 0 ? confSum / confCount : 1.0,
-      excused_absence: false, // 사유 결석 미추적
+      excused_absence: false, // 사유 결석은 점수에 반영하지 않음 (출결 표시 전용)
       absent,
       is_official: req.meeting.meeting_type === 'regular',
     },
