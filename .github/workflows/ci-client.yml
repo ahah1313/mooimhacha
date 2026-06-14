@@ -28,7 +28,7 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Install deps
-        run: npm install
+        run: npm install --include=optional
 
       - name: Typecheck
         run: npx tsc --noEmit
