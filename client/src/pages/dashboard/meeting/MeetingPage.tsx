@@ -4,6 +4,7 @@ import { useOutletContext } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
 import Modal from "@/components/Modal";
 import ConfirmModal from "@/components/ConfirmModal";
+import HeadsetGateModal from "@/components/HeadsetGateModal";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 import { openCompanion } from "@/lib/companion";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -86,7 +87,7 @@ export default function MeetingPage() {
   const [decInput, setDecInput] = useState("");
   // 세 모달을 하나의 state로 관리. null이면 모두 닫힘.
   const [modalOpen, setModalOpen] = useState<
-    "meeting" | "decision" | "agenda" | "absence" | null
+    "meeting" | "decision" | "agenda" | "absence" | "headset" | null
   >(null);
   // 결정 수정/삭제 대상 — 수정은 결정 모달을 재사용, 삭제는 확인 모달을 띄운다.
   const [editingDecision, setEditingDecision] = useState<Decision | null>(null);
@@ -476,7 +477,7 @@ export default function MeetingPage() {
           "error",
         );
       } else {
-        showToast("회의가 시작됐어요. 🎧 헤드셋 사용을 권장드립니다");
+        showToast("회의가 시작되었습니다");
       }
       await loadMeetings();
     } catch (e) {
@@ -635,7 +636,7 @@ export default function MeetingPage() {
                   {selected.status === "scheduled" && (
                     <button
                       className="btn btn-primary btn-sm"
-                      onClick={() => void startMeeting()}
+                      onClick={() => setModalOpen("headset")}
                       disabled={busy}
                     >
                       <i className="ti ti-player-play" /> 회의 시작
@@ -1103,6 +1104,17 @@ export default function MeetingPage() {
           )}
         </div>
       </div>
+
+      {/* 회의 입장 전 헤드셋 권장 안내 — 보조 창을 열기 전에 띄우고, 확인 시 시작 진행 */}
+      {modalOpen === "headset" && (
+        <HeadsetGateModal
+          onClose={() => setModalOpen(null)}
+          onConfirm={() => {
+            setModalOpen(null);
+            void startMeeting();
+          }}
+        />
+      )}
 
       {/* 새 회의 모달 */}
       {modalOpen === "meeting" && (

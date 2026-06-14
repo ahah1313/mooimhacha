@@ -6,6 +6,7 @@ import { useTeamStore } from "@/stores/teamStore";
 import { useToast } from "@/hooks/useToast";
 import NotificationBell from "@/components/NotificationBell";
 import Modal from "@/components/Modal";
+import HeadsetGateModal from "@/components/HeadsetGateModal";
 import type { Team, Meeting, Decision, ActionItem } from "@/lib/types";
 import "@/styles/live.css";
 
@@ -31,6 +32,8 @@ export default function MeetingLauncher() {
   const [blockedMeetingId, setBlockedMeetingId] = useState<number | null>(
     null,
   );
+  // 회의 입장 전 헤드셋 권장 안내 — 대상 회의를 담으면 모달 노출, 확인 시 입장 진행
+  const [headsetPrompt, setHeadsetPrompt] = useState<Meeting | null>(null);
 
   const [teamName, setTeamName] = useState("");
   const [courseName, setCourseName] = useState("");
@@ -375,7 +378,7 @@ export default function MeetingLauncher() {
                     리포트
                   </button>
                 ) : (
-                  <button className="live-btn" onClick={() => startMeeting(m)}>
+                  <button className="live-btn" onClick={() => setHeadsetPrompt(m)}>
                     {m.status === "active" ? "회의 창 다시 열기" : "회의 시작"}
                   </button>
                 )}
@@ -399,6 +402,19 @@ export default function MeetingLauncher() {
       )}
 
       {error && <p className="live-error">{error}</p>}
+
+      {/* 회의 입장 전 헤드셋 권장 안내 — 보조 창을 열기 전에 띄우고, 확인 시 입장 진행 */}
+      {headsetPrompt && (
+        <HeadsetGateModal
+          confirmLabel="확인하고 입장"
+          onClose={() => setHeadsetPrompt(null)}
+          onConfirm={() => {
+            const m = headsetPrompt;
+            setHeadsetPrompt(null);
+            startMeeting(m);
+          }}
+        />
+      )}
 
       {/* 회의 생성 모달 — 지난 회의 내용을 참고하며 안건·주제를 정할 수 있게 */}
       {showCreate && (
