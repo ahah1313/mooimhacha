@@ -15,6 +15,7 @@ import type {
   AttendanceSummary,
   AttendanceStatus,
   Transcript,
+  TeamSettings,
 } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 
@@ -73,6 +74,7 @@ export default function MeetingPage() {
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [attendance, setAttendance] = useState<MeetingAttendance | null>(null);
+  const [teamSettings, setTeamSettings] = useState<TeamSettings | null>(null);
   const [absenceInput, setAbsenceInput] = useState("");
   // 회의별 출결 요약 (목록 배지·미처리 표시용)
   const [summaries, setSummaries] = useState<Map<number, AttendanceSummary>>(
@@ -215,6 +217,9 @@ export default function MeetingPage() {
     setAttendance(null);
     if (tab === "attendance" && selected?.status === "ended" && selectedId) {
       void loadAttendance(selectedId);
+      if (!teamSettings && team) {
+        void apiGet<TeamSettings>(`/teams/${team.id}/settings`).then(setTeamSettings).catch(() => null);
+      }
     }
   }, [tab, selectedId, selected?.status, loadAttendance]);
 
@@ -877,7 +882,18 @@ export default function MeetingPage() {
                 {/* 출결 */}
                 {tab === "attendance" && (
                   <div className="tab-panel active">
-                    <div className="panel-label">출결 현황</div>
+                    <div className="panel-label">출결 현황
+                      {(() => {
+                        const grace = teamSettings?.punctuality_grace_ratio ?? 0.1;
+                        const totalMin = selected.total_minutes;
+                        const graceMin = Math.round(totalMin * grace);
+                        return (
+                          <span className="info-tip" data-tip={`회의 시작 후 ${graceMin}분(총 ${totalMin}분의 ${Math.round(grace * 100)}%) 이내 입장 → 출석\n초과 입장 → 지각\n입장 기록 없음 → 결석`}>
+                            <i className="ti ti-info-circle" />
+                          </span>
+                        );
+                      })()}
+                    </div>
                     {selected.status !== "ended" ? (
                       <div className="summary-box">
                         <i className="ti ti-info-circle" />
