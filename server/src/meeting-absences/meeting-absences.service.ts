@@ -226,6 +226,32 @@ export class MeetingAbsencesService {
     };
   }
 
+  // 동의 취소 — pending 상태일 때만 가능
+  async cancelConsent(userId: number, absenceId: number) {
+    const absence = await this.absenceRepo.findOne({
+      where: { id: absenceId },
+    });
+    if (!absence) throw new NotFoundException('결석 사유를 찾을 수 없습니다.');
+    const meeting = await this.requireMeeting(absence.meeting_id);
+    await this.teamsService.requireMembership(userId, meeting.team_id);
+    if (absence.status !== 'pending') {
+      throw new BadRequestException('이미 승인된 동의는 취소할 수 없습니다.');
+    }
+
+    await this.consentRepo.delete({ absence_id: absenceId, voter_id: userId });
+
+    const members = await this.teamsService.getMembers(meeting.team_id);
+    const required = Math.ceil((members.length - 1) / 2);
+    const count = await this.consentRepo.count({
+      where: { absence_id: absenceId },
+    });
+    return {
+      status: absence.status,
+      consent_count: count,
+      consent_required: required,
+    };
+  }
+
   // --- 헬퍼 ---
 
   private deriveStatus(

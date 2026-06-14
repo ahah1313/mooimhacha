@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Param,
   ParseIntPipe,
   Post,
@@ -58,5 +59,14 @@ export class MeetingAbsencesController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.absencesService.consent(req.user.id, id);
+  }
+
+  @Delete('absences/:id/consent')
+  @ApiOperation({ summary: '결석 사유 동의 취소' })
+  cancelConsent(
+    @Request() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.absencesService.cancelConsent(req.user.id, id);
   }
 }
