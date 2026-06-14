@@ -246,6 +246,18 @@ export default function MeetingPage() {
     ":" +
     String(s % 60).padStart(2, "0");
 
+  const fmtAgTime = (ag: Agenda) => {
+    if (ag.started_at_offset_ms != null && ag.ended_at_offset_ms != null) {
+      const totalSec = Math.round(
+        (ag.ended_at_offset_ms - ag.started_at_offset_ms) / 1000,
+      );
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return s > 0 ? `${m}분 ${s}초` : `${m}분`;
+    }
+    return `${ag.actual_minutes ?? ag.estimated_minutes}분`;
+  };
+
   // 추가/수정 겸용 — editingDecision이 있으면 PATCH, 없으면 POST
   async function saveDecision() {
     if (!decInput.trim()) {
@@ -720,9 +732,7 @@ export default function MeetingPage() {
                               }}
                             />
                           </div>
-                          <div className="ag-time">
-                            {a.actual_minutes ?? a.estimated_minutes}분
-                          </div>
+                          <div className="ag-time">{fmtAgTime(a)}</div>
                         </div>
                       );
                     })}

@@ -641,9 +641,10 @@
   font-size: 11px;
   color: var(--text-soft);
   font-weight: 600;
-  width: 34px;
+  width: 72px;
+  white-space: nowrap;
   text-align: right;
-  flex: 0 0 auto;
+  flex: 0 0 55px;
 }
 
 .speak-row {
