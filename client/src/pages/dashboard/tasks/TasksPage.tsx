@@ -5,7 +5,7 @@ import Modal from "@/components/Modal";
 import ConfirmModal from "@/components/ConfirmModal";
 import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api";
 import { getUser } from "@/lib/auth";
-import type { ActionItem, TeamContribution } from "@/lib/types";
+import type { ActionItem, TeamContribution, TaskExtension } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 
 type Status = "할 일" | "진행 중" | "완료";
@@ -65,6 +65,12 @@ function fmtTime(d: Date): string {
   return `${ampm} ${h12}:${String(m).padStart(2, "0")}`;
 }
 
+// Date → datetime-local input 값 ("YYYY-MM-DDTHH:mm")
+function toLocalInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const DIFF_CHIPS = [
   { value: 1, label: "★ 낮음" },
   { value: 2, label: "★★ 보통" },
@@ -112,6 +118,33 @@ export default function TasksPage() {
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
 
+  // 기한 연장: 태스크별 최신 요청 (action_item_id → 요청)
+  const [extensions, setExtensions] = useState<Map<number, TaskExtension>>(
+    new Map(),
+  );
+  // 연장 요청 모달
+  const [extTarget, setExtTarget] = useState<ActionItem | null>(null);
+  const [extDue, setExtDue] = useState("");
+  const [extReason, setExtReason] = useState("");
+  const [extSaving, setExtSaving] = useState(false);
+
+  // 팀의 연장 요청 로드 — 태스크별 최신 1건만 (list는 created_at DESC)
+  const loadExtensions = useCallback(async () => {
+    if (!team) return;
+    try {
+      const list = await apiGet<TaskExtension[]>(
+        `/teams/${team.id}/extensions`,
+      );
+      const byTask = new Map<number, TaskExtension>();
+      for (const e of list) {
+        if (!byTask.has(e.action_item_id)) byTask.set(e.action_item_id, e);
+      }
+      setExtensions(byTask);
+    } catch {
+      /* 부가 정보 — 실패는 조용히 무시 */
+    }
+  }, [team]);
+
   const load = useCallback(async () => {
     if (!team) return;
     try {
@@ -130,7 +163,121 @@ export default function TasksPage() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadExtensions();
+  }, [load, loadExtensions]);
+
+  // 연장 요청 모달 열기 — 기본 희망 기한은 기존 기한 +3일
+  function openExtModal(t: ActionItem) {
+    setExtTarget(t);
+    setExtReason("");
+    const base = t.due_date ? new Date(t.due_date) : new Date();
+    base.setDate(base.getDate() + 3);
+    setExtDue(toLocalInput(base));
+  }
+
+  async function submitExtension() {
+    if (!extTarget) return;
+    if (!extDue) {
+      showToast("희망 기한을 선택해 주세요", "error");
+      return;
+    }
+    if (!extReason.trim()) {
+      showToast("연장 사유를 입력해 주세요", "error");
+      return;
+    }
+    setExtSaving(true);
+    try {
+      await apiPost(`/action-items/${extTarget.id}/extension`, {
+        requested_due_date: new Date(extDue).toISOString(),
+        reason: extReason.trim(),
+      });
+      setExtTarget(null);
+      await loadExtensions();
+      showToast("연장 요청을 보냈어요. 팀장 승인을 기다려 주세요");
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setExtSaving(false);
+    }
+  }
+
+  async function approveExt(extId: number) {
+    try {
+      await apiPost(`/extensions/${extId}/approve`);
+      await Promise.all([load(), loadExtensions()]);
+      showToast("연장을 수락했습니다");
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    }
+  }
+
+  async function rejectExt(extId: number) {
+    try {
+      await apiPost(`/extensions/${extId}/reject`);
+      await loadExtensions();
+      showToast("연장을 거절했습니다");
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    }
+  }
+
+  // 태스크 카드 인라인 연장 영역 — board/list 공용
+  function renderExtension(t: ActionItem) {
+    const status = API_TO_STATUS[t.status];
+    const dd = dueState(t.due_date);
+    const overdue = status !== "완료" && dd.danger;
+    const ext = extensions.get(t.id);
+    const isLeader = team?.my_role === "leader";
+    const isMine = t.assignee_id === currentUser?.id;
+    const fmtD = (iso: string) => {
+      const d = new Date(iso);
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    };
+
+    if (ext?.status === "pending") {
+      return (
+        <div className="tc-ext" onClick={(e) => e.stopPropagation()}>
+          <span className="tc-ext-label">
+            <i className="ti ti-clock-hour-4" /> 연장 요청 ~
+            {fmtD(ext.requested_due_date)}
+          </span>
+          {isLeader ? (
+            <span className="tc-ext-acts">
+              <button
+                className="tc-ext-ok"
+                onClick={() => void approveExt(ext.id)}
+              >
+                수락
+              </button>
+              <button
+                className="tc-ext-no"
+                onClick={() => void rejectExt(ext.id)}
+              >
+                거절
+              </button>
+            </span>
+          ) : (
+            <span className="tc-ext-wait">대기 중</span>
+          )}
+        </div>
+      );
+    }
+    if (overdue && isMine) {
+      return (
+        <button
+          className="tc-ext-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            openExtModal(t);
+          }}
+        >
+          <i className="ti ti-calendar-plus" />
+          {ext?.status === "rejected" ? "연장 거절됨 · 재요청" : "기한 연장 요청"}
+        </button>
+      );
+    }
+    return null;
+  }
 
   const nameOf = (id: number | null) =>
     members.find((m) => m.user_id === id)?.name ?? "미지정";
@@ -477,6 +624,7 @@ export default function TasksPage() {
                           </div>
                         )}
                       </div>
+                      {renderExtension(t)}
                     </div>
                   );
                 })}
@@ -498,8 +646,8 @@ export default function TasksPage() {
             const danger = status !== "완료" && dd.danger;
             const warn = status !== "완료" && dd.warn;
             return (
+              <div key={t.id} className="lrow-wrap">
               <div
-                key={t.id}
                 className={`lrow ${danger ? "danger" : ""} ${warn ? "warn" : ""}`}
                 style={{
                   cursor: "pointer",
@@ -550,6 +698,8 @@ export default function TasksPage() {
                     {"★".repeat(3 - (t.difficulty ?? 1))}
                   </span>
                 </span>
+              </div>
+                {renderExtension(t)}
               </div>
             );
           })}
@@ -790,6 +940,51 @@ export default function TasksPage() {
           onConfirm={() => void deleteTask()}
           onClose={() => setConfirmDelete(false)}
         />
+      )}
+
+      {/* 기한 연장 요청 모달 */}
+      {extTarget && (
+        <Modal
+          title="기한 연장 요청"
+          onClose={() => setExtTarget(null)}
+          actions={
+            <>
+              <button className="btn" onClick={() => setExtTarget(null)}>
+                취소
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => void submitExtension()}
+                disabled={extSaving}
+              >
+                {extSaving ? "요청 중…" : "요청 보내기"}
+              </button>
+            </>
+          }
+        >
+          <div className="modal-sub">
+            팀장이 수락하면 기한이 변경됩니다.
+          </div>
+          <div className="field">
+            <label className="field-label">희망 기한</label>
+            <input
+              className="input"
+              type="datetime-local"
+              value={extDue}
+              onChange={(e) => setExtDue(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label className="field-label">사유</label>
+            <textarea
+              className="input"
+              rows={3}
+              placeholder="예) 추가 자료 조사가 더 필요합니다."
+              value={extReason}
+              onChange={(e) => setExtReason(e.target.value)}
+            />
+          </div>
+        </Modal>
       )}
     </div>
   );

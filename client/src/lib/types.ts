@@ -62,6 +62,19 @@ export interface ActionItem {
   status: string;
 }
 
+export interface TaskExtension {
+  id: number;
+  action_item_id: number;
+  requester_id: number;
+  requester_name: string;
+  task_description: string;
+  current_due_date: string | null;
+  requested_due_date: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
 export interface MeetingContribution {
   user_id: number;
   name: string;

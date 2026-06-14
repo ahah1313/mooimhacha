@@ -135,6 +135,23 @@
   background: var(--coral);
   color: #fff;
 }
+/* 처리할 일 알림(!) — 우측 정렬, 배지와 공존 시 배지가 옆에 붙음 */
+.nav-alert {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--coral);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.nav-alert + .nbadge {
+  margin-left: 5px;
+}
 
 .sb-members {
   margin-top: 18px;
@@ -456,13 +473,6 @@
   color: var(--text-soft);
   margin-top: 3px;
 }
-.mcard-att-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
 .mcard-att {
   font-size: 9.5px;
   font-weight: 700;
@@ -470,17 +480,6 @@
   border-radius: 999px;
   flex: 0 0 auto;
   white-space: nowrap;
-}
-.mcard-pending {
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--coral);
-  background: var(--coral-soft);
-  padding: 1px 7px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
 }
 .spill {
   font-size: 9.5px;
@@ -1144,6 +1143,77 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* 태스크 기한 연장 (카드 인라인) */
+.tc-ext-btn {
+  margin-top: 8px;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px dashed rgba(240, 102, 79, 0.5);
+  background: var(--coral-soft);
+  color: var(--coral);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tc-ext-btn:hover {
+  background: rgba(240, 102, 79, 0.18);
+}
+.tc-ext {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.tc-ext-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  color: var(--amber, #b8860b);
+}
+.tc-ext-acts {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.tc-ext-ok,
+.tc-ext-no {
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tc-ext-ok {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.tc-ext-no {
+  background: var(--coral-soft);
+  color: var(--coral);
+}
+.tc-ext-wait {
+  margin-left: auto;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+.lrow-wrap + .lrow-wrap {
+  margin-top: 2px;
+}
+.lrow-wrap .tc-ext,
+.lrow-wrap .tc-ext-btn {
+  margin: 4px 0 8px 12px;
+  width: auto;
 }
 .tc-who {
   display: flex;

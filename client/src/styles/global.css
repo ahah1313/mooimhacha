@@ -524,6 +524,97 @@ textarea.input {
   justify-content: flex-end;
   margin-top: 14px;
 }
+/* 헤드셋 권장 안내 모달 — 회의 입장 전 노출 (HeadsetGateModal) */
+.headset-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2px 4px;
+}
+.headset-visual {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin: 6px 0 20px;
+  display: grid;
+  place-items: center;
+}
+.headset-visual i {
+  position: relative;
+  z-index: 2;
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--av1);
+  color: #fff;
+  font-size: 42px;
+  box-shadow: var(--shadow-md);
+  animation: headsetPop 0.5s cubic-bezier(0.2, 1.25, 0.4, 1) both;
+}
+/* 바깥으로 퍼지는 음파 링 — 헤드셋(오디오) 맥락 모티프 */
+.headset-visual::before,
+.headset-visual::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px solid var(--green-bright);
+  opacity: 0;
+  animation: headsetWave 2.6s ease-out infinite;
+}
+.headset-visual::after {
+  animation-delay: 1.3s;
+}
+@keyframes headsetPop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes headsetWave {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.72);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+.headset-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.headset-desc {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-mut);
+  max-width: 300px;
+}
+.headset-desc strong {
+  color: var(--green);
+  font-weight: 700;
+}
+@media (prefers-reduced-motion: reduce) {
+  .headset-visual i {
+    animation: none;
+  }
+  .headset-visual::before,
+  .headset-visual::after {
+    animation: none;
+  }
+}
 .danger-zone {
   margin-top: 16px;
   padding: 12px 14px;

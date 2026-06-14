@@ -15,6 +15,7 @@ import { DecisionsModule } from './decisions/decisions.module';
 import { ActionItemsModule } from './action-items/action-items.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MeetingAbsencesModule } from './meeting-absences/meeting-absences.module';
+import { TaskExtensionsModule } from './task-extensions/task-extensions.module';
 import { EventsModule } from './events/events.module';
 import { HealthController } from './health.controller';
 import { buildTypeOrmOptions } from './data-source';
@@ -46,6 +47,7 @@ import { buildTypeOrmOptions } from './data-source';
     ActionItemsModule,
     NotificationsModule,
     MeetingAbsencesModule,
+    TaskExtensionsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
