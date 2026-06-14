@@ -30,7 +30,7 @@ jobs:
           cache-dependency-path: client/package-lock.json
 
       - name: Install deps
-        run: npm ci
+        run: npm install
 
       - name: Typecheck
         run: npx tsc --noEmit
