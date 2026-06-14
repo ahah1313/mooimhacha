@@ -93,6 +93,36 @@ export interface CurrentUser {
   email_opt_out?: boolean;
 }
 
+export type AttendanceStatus = "present" | "late" | "absent" | "excused";
+
+export interface AttendanceMember {
+  user_id: number;
+  name: string;
+  profile_image_url: string | null;
+  status: AttendanceStatus;
+  late_minutes: number | null;
+  absence: {
+    id: number;
+    reason: string;
+    status: "pending" | "approved" | "rejected";
+    consent_count: number;
+    my_consent: boolean;
+  } | null;
+}
+
+export interface MeetingAttendance {
+  meeting_id: number;
+  consent_required: number;
+  members: AttendanceMember[];
+}
+
+// 회의 목록 사이드바용 요약 — 내 출결 + 미처리 동의 수
+export interface AttendanceSummary {
+  meeting_id: number;
+  my_status: AttendanceStatus;
+  pending_count: number;
+}
+
 // 기여도 집계 규칙 (서버 team_settings 엔티티 대응)
 export interface TeamSettings {
   team_id: number;

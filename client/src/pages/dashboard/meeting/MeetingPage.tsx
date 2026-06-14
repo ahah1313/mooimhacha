@@ -5,15 +5,34 @@ import Modal from "@/components/Modal";
 import ConfirmModal from "@/components/ConfirmModal";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 import { openCompanion } from "@/lib/companion";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import type {
   Agenda,
   Decision,
   Meeting,
   MeetingContribution,
+  MeetingAttendance,
+  AttendanceSummary,
+  AttendanceStatus,
 } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 
-type Tab = "agenda" | "speak" | "decision" | "summary";
+type Tab = "agenda" | "speak" | "attendance" | "decision" | "summary";
+
+// 출결 상태별 배지 표기 (기존 색상 토큰 재사용)
+const ATT_BADGE: Record<
+  AttendanceStatus,
+  { label: string; color: string; bg: string }
+> = {
+  present: { label: "출석", color: "var(--green)", bg: "var(--green-soft)" },
+  excused: {
+    label: "출석 인정",
+    color: "var(--green)",
+    bg: "var(--green-soft)",
+  },
+  late: { label: "지각", color: "#b8860b", bg: "rgba(240,193,79,.18)" },
+  absent: { label: "결석", color: "var(--coral)", bg: "var(--coral-soft)" },
+};
 
 const AV_GRADS = ["var(--av1)", "var(--av2)", "var(--av3)", "var(--av4)"];
 
@@ -45,18 +64,25 @@ function meetingMeta(m: Meeting, memberCount: number): string {
 export default function MeetingPage() {
   const { showToast } = useToast();
   const team = useOutletContext<TeamContext | null>();
+  const me = useCurrentUser();
   const [tab, setTab] = useState<Tab>("agenda");
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [agendas, setAgendas] = useState<Agenda[]>([]);
   const [speak, setSpeak] = useState<MeetingContribution[]>([]);
   const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [attendance, setAttendance] = useState<MeetingAttendance | null>(null);
+  const [absenceInput, setAbsenceInput] = useState("");
+  // 회의별 출결 요약 (목록 배지·미처리 표시용)
+  const [summaries, setSummaries] = useState<Map<number, AttendanceSummary>>(
+    new Map(),
+  );
   // elapsed: 초 단위 정수. fmt()로 MM:SS 포맷 변환.
   const [elapsed, setElapsed] = useState(0);
   const [decInput, setDecInput] = useState("");
   // 세 모달을 하나의 state로 관리. null이면 모두 닫힘.
   const [modalOpen, setModalOpen] = useState<
-    "meeting" | "decision" | "agenda" | null
+    "meeting" | "decision" | "agenda" | "absence" | null
   >(null);
   // 결정 수정/삭제 대상 — 수정은 결정 모달을 재사용, 삭제는 확인 모달을 띄운다.
   const [editingDecision, setEditingDecision] = useState<Decision | null>(null);
@@ -74,7 +100,12 @@ export default function MeetingPage() {
   const [newTime, setNewTime] = useState("15:00");
   // 입력 중 빈 값을 허용하기 위해 ""도 담는다 — 제출 시 기본값으로 보정
   const [newMinutes, setNewMinutes] = useState<number | "">(30);
-  const [newAgendas, setNewAgendas] = useState("");
+  // 아젠다를 한 항목씩 추가 — 예상 시간(minutes)은 선택
+  const [newAgendaList, setNewAgendaList] = useState<
+    { title: string; minutes: number | "" }[]
+  >([]);
+  const [newAgendaInput, setNewAgendaInput] = useState("");
+  const [newAgendaMinutes, setNewAgendaMinutes] = useState<number | "">("");
 
   // 아젠다 모달 입력값
   const [agTitle, setAgTitle] = useState("");
@@ -116,6 +147,23 @@ export default function MeetingPage() {
     void loadMeetings();
   }, [loadMeetings]);
 
+  // 회의 목록 출결 요약 — 카드 배지·미처리 표시용 (부가 정보라 실패는 조용히 무시)
+  const loadSummaries = useCallback(async () => {
+    if (!team) return;
+    try {
+      const list = await apiGet<AttendanceSummary[]>(
+        `/teams/${team.id}/attendance-summary`,
+      );
+      setSummaries(new Map(list.map((s) => [s.meeting_id, s])));
+    } catch {
+      /* 무시 */
+    }
+  }, [team]);
+
+  useEffect(() => {
+    void loadSummaries();
+  }, [loadSummaries]);
+
   // 선택 회의의 상세(아젠다·발언·결정) 로드
   useEffect(() => {
     if (!selectedId) {
@@ -142,6 +190,27 @@ export default function MeetingPage() {
       alive = false;
     };
   }, [selectedId]);
+
+  // 출결: 종료된 회의의 출결 탭 진입 시 로드 (재사용 위해 useCallback)
+  const loadAttendance = useCallback(
+    async (meetingId: number) => {
+      try {
+        setAttendance(
+          await apiGet<MeetingAttendance>(`/meetings/${meetingId}/attendance`),
+        );
+      } catch (e) {
+        showToast((e as Error).message, "error");
+      }
+    },
+    [showToast],
+  );
+
+  useEffect(() => {
+    setAttendance(null);
+    if (tab === "attendance" && selected?.status === "ended" && selectedId) {
+      void loadAttendance(selectedId);
+    }
+  }, [tab, selectedId, selected?.status, loadAttendance]);
 
   // 진행 중 회의 경과 시간 — t0 기준 실측, 1초 틱
   useEffect(() => {
@@ -229,10 +298,82 @@ export default function MeetingPage() {
     }
   }
 
+  // 본인 결석 사유 입력
+  async function saveAbsence() {
+    if (!absenceInput.trim()) {
+      showToast("결석 사유를 입력해주세요");
+      return;
+    }
+    if (!selectedId || busy) return;
+    setBusy(true);
+    try {
+      await apiPost(`/meetings/${selectedId}/absences`, {
+        reason: absenceInput.trim(),
+      });
+      setModalOpen(null);
+      setAbsenceInput("");
+      await Promise.all([loadAttendance(selectedId), loadSummaries()]);
+      showToast("결석 사유가 등록되었습니다. 팀원 동의를 기다려 주세요");
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // 다른 멤버의 결석 사유에 동의 — 정족수 도달 시 출석 인정으로 자동 전환
+  async function consentAbsence(absenceId: number) {
+    if (!selectedId || busy) return;
+    setBusy(true);
+    try {
+      const r = await apiPost<{ status: string }>(
+        `/absences/${absenceId}/consent`,
+      );
+      await Promise.all([loadAttendance(selectedId), loadSummaries()]);
+      showToast(
+        r.status === "approved"
+          ? "출석 인정으로 처리되었습니다"
+          : "동의했습니다",
+      );
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // 새 회의 모달: 아젠다를 한 항목씩 리스트에 추가
+  function addAgendaToList() {
+    const t = newAgendaInput.trim();
+    if (!t) return;
+    setNewAgendaList((prev) => [
+      ...prev,
+      { title: t, minutes: newAgendaMinutes },
+    ]);
+    setNewAgendaInput("");
+    setNewAgendaMinutes("");
+  }
+
+  function removeAgendaFromList(idx: number) {
+    setNewAgendaList((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  // 새 회의 모달 닫기 — 아젠다 입력 잔존 방지
+  function closeMeetingModal() {
+    setModalOpen(null);
+    setNewAgendaList([]);
+    setNewAgendaInput("");
+    setNewAgendaMinutes("");
+  }
+
   async function createMeeting() {
     if (!team || busy) return;
     if (!newDate) {
       showToast("날짜를 선택해 주세요", "error");
+      return;
+    }
+    if (!newMinutes) {
+      showToast("예상 소요 시간을 입력해 주세요", "error");
       return;
     }
     setBusy(true);
@@ -240,21 +381,22 @@ export default function MeetingPage() {
       const created = await apiPost<Meeting>("/meetings", {
         team_id: team.id,
         scheduled_at: new Date(`${newDate}T${newTime}:00`).toISOString(),
-        total_minutes: newMinutes || 30,
+        total_minutes: newMinutes,
         topic: newTopic.trim() || undefined,
       });
-      // 줄바꿈으로 입력한 아젠다를 순서대로 등록
-      const lines = newAgendas
-        .split("\n")
-        .map((l) => l.replace(/^\d+[.)]\s*/, "").trim())
-        .filter(Boolean);
-      for (const title of lines) {
-        await apiPost(`/meetings/${created.id}/agendas`, { title });
+      // 추가한 아젠다를 순서대로 등록 — 예상 시간은 입력한 경우에만 전송(선택)
+      for (const ag of newAgendaList) {
+        await apiPost(`/meetings/${created.id}/agendas`, {
+          title: ag.title,
+          ...(ag.minutes !== "" ? { estimated_minutes: ag.minutes } : {}),
+        });
       }
       setModalOpen(null);
       setNewTopic("");
       setNewDate("");
-      setNewAgendas("");
+      setNewAgendaList([]);
+      setNewAgendaInput("");
+      setNewAgendaMinutes("");
       showToast("새 회의가 생성되었습니다");
       await loadMeetings();
       setSelectedId(created.id);
@@ -395,7 +537,11 @@ export default function MeetingPage() {
                 items.length > 0 && (
                   <div key={label}>
                     <div className="msb-group">{label}</div>
-                    {items.map((m) => (
+                    {items.map((m) => {
+                      const sum =
+                        m.status === "ended" ? summaries.get(m.id) : undefined;
+                      const attBadge = sum ? ATT_BADGE[sum.my_status] : null;
+                      return (
                       <div
                         key={m.id}
                         className={`mcard ${m.id === selectedId ? "sel" : ""}`}
@@ -406,6 +552,18 @@ export default function MeetingPage() {
                           <div className="mcard-name">
                             {m.topic ?? "제목 없는 회의"}
                           </div>
+                          {/* 완료 옆에 내 출결 표시 */}
+                          {attBadge && (
+                            <span
+                              className="mcard-att"
+                              style={{
+                                color: attBadge.color,
+                                background: attBadge.bg,
+                              }}
+                            >
+                              {attBadge.label}
+                            </span>
+                          )}
                           <span className={`spill ${spillCls[m.status]}`}>
                             {spillLabel[m.status]}
                           </span>
@@ -413,8 +571,17 @@ export default function MeetingPage() {
                         <div className="mcard-meta">
                           {meetingMeta(m, team?.member_count ?? 0)}
                         </div>
+                        {sum && sum.pending_count > 0 && (
+                          <div className="mcard-att-row">
+                            <span className="mcard-pending">
+                              <i className="ti ti-alert-circle" /> 미처리{" "}
+                              {sum.pending_count}건
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ),
             )}
@@ -467,7 +634,15 @@ export default function MeetingPage() {
                   )}
                 </div>
                 <div className="tabs">
-                  {(["agenda", "speak", "decision", "summary"] as Tab[]).map(
+                  {(
+                    [
+                      "agenda",
+                      "speak",
+                      "attendance",
+                      "decision",
+                      "summary",
+                    ] as Tab[]
+                  ).map(
                     (t) => (
                       <div
                         key={t}
@@ -478,6 +653,7 @@ export default function MeetingPage() {
                           {
                             agenda: "아젠다",
                             speak: "발언 기록",
+                            attendance: "출결",
                             decision: "결정 사항",
                             summary: "회의 요약",
                           }[t]
@@ -626,6 +802,97 @@ export default function MeetingPage() {
                   </div>
                 )}
 
+                {/* 출결 */}
+                {tab === "attendance" && (
+                  <div className="tab-panel active">
+                    <div className="panel-label">출결 현황</div>
+                    {selected.status !== "ended" ? (
+                      <div className="summary-box">
+                        <i className="ti ti-info-circle" />
+                        출결은 회의가 종료된 후 확인할 수 있어요.
+                      </div>
+                    ) : !attendance ? (
+                      <div
+                        style={{ fontSize: 12.5, color: "var(--text-soft)" }}
+                      >
+                        불러오는 중…
+                      </div>
+                    ) : (
+                      <>
+                        {attendance.members.map((mem) => {
+                          const badge = ATT_BADGE[mem.status];
+                          const isMe = me?.id === mem.user_id;
+                          return (
+                            <div key={mem.user_id} className="att-row">
+                              <div className={`av a${(mem.user_id % 4) + 1} av-sm`}>
+                                {mem.name[0]}
+                              </div>
+                              <span className="att-name">{mem.name}</span>
+                              <span
+                                className="att-badge"
+                                style={{ color: badge.color, background: badge.bg }}
+                              >
+                                {badge.label}
+                                {mem.status === "late" &&
+                                  mem.late_minutes != null &&
+                                  ` ${mem.late_minutes}분`}
+                              </span>
+                              {/* 본인 결석 + 미입력 → 사유 입력 */}
+                              {isMe &&
+                                mem.status === "absent" &&
+                                !mem.absence && (
+                                  <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => {
+                                      setAbsenceInput("");
+                                      setModalOpen("absence");
+                                    }}
+                                  >
+                                    사유 입력
+                                  </button>
+                                )}
+                              {/* 타인 결석 + 사유 있음 + 미승인 → 동의 */}
+                              {!isMe &&
+                                mem.absence &&
+                                mem.absence.status === "pending" && (
+                                  <button
+                                    className="btn btn-sm"
+                                    disabled={busy || mem.absence.my_consent}
+                                    onClick={() =>
+                                      void consentAbsence(mem.absence!.id)
+                                    }
+                                  >
+                                    {mem.absence.my_consent
+                                      ? `동의함 ${mem.absence.consent_count}/${attendance.consent_required}`
+                                      : `동의 ${mem.absence.consent_count}/${attendance.consent_required}`}
+                                  </button>
+                                )}
+                            </div>
+                          );
+                        })}
+                        {/* 사유 상세 (입력된 결석 건) */}
+                        {attendance.members.some((m) => m.absence) && (
+                          <div className="att-reasons">
+                            {attendance.members
+                              .filter((m) => m.absence)
+                              .map((m) => (
+                                <div key={m.user_id} className="att-reason">
+                                  <strong>{m.name}</strong>
+                                  <span>{m.absence!.reason}</span>
+                                  {m.absence!.status === "approved" && (
+                                    <span className="att-reason-ok">
+                                      <i className="ti ti-check" /> 인정됨
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {/* 결정 사항 */}
                 {tab === "decision" && (
                   <div className="tab-panel active">
@@ -712,10 +979,10 @@ export default function MeetingPage() {
       {modalOpen === "meeting" && (
         <Modal
           title="새 회의 만들기"
-          onClose={() => setModalOpen(null)}
+          onClose={closeMeetingModal}
           actions={
             <>
-              <button className="btn" onClick={() => setModalOpen(null)}>
+              <button className="btn" onClick={closeMeetingModal}>
                 취소
               </button>
               <button
@@ -776,15 +1043,61 @@ export default function MeetingPage() {
           </div>
           <div className="field">
             <label className="field-label">
-              아젠다 <span className="opt">(줄바꿈으로 구분)</span>
+              아젠다 <span className="opt">(선택)</span>
             </label>
-            <textarea
-              className="input"
-              rows={3}
-              placeholder={"1. 진행 상황 공유\n2. 역할 재조정"}
-              value={newAgendas}
-              onChange={(e) => setNewAgendas(e.target.value)}
-            />
+            {newAgendaList.length > 0 && (
+              <div className="agenda-chips">
+                {newAgendaList.map((ag, i) => (
+                  <div className="agenda-chip" key={i}>
+                    <span className="agenda-chip-title">{ag.title}</span>
+                    {ag.minutes !== "" && (
+                      <span className="agenda-chip-min">{ag.minutes}분</span>
+                    )}
+                    <button
+                      type="button"
+                      className="agenda-chip-x"
+                      onClick={() => removeAgendaFromList(i)}
+                      aria-label="아젠다 삭제"
+                    >
+                      <i className="ti ti-x" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="agenda-add">
+              <input
+                className="input"
+                placeholder="아젠다 제목"
+                value={newAgendaInput}
+                onChange={(e) => setNewAgendaInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addAgendaToList();
+                  }
+                }}
+              />
+              <input
+                className="input agenda-add-min"
+                type="number"
+                min={0}
+                placeholder="분"
+                value={newAgendaMinutes}
+                onChange={(e) =>
+                  setNewAgendaMinutes(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  )
+                }
+              />
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm agenda-add-btn"
+              onClick={addAgendaToList}
+            >
+              <i className="ti ti-plus" /> 추가
+            </button>
           </div>
         </Modal>
       )}
@@ -826,6 +1139,51 @@ export default function MeetingPage() {
               placeholder="회의에서 결정된 내용을 입력하세요"
               value={decInput}
               onChange={(e) => setDecInput(e.target.value)}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {/* 결석 사유 입력 모달 */}
+      {modalOpen === "absence" && (
+        <Modal
+          title="결석 사유 입력"
+          onClose={() => {
+            setModalOpen(null);
+            setAbsenceInput("");
+          }}
+          actions={
+            <>
+              <button
+                className="btn"
+                onClick={() => {
+                  setModalOpen(null);
+                  setAbsenceInput("");
+                }}
+              >
+                취소
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => void saveAbsence()}
+                disabled={busy}
+              >
+                제출
+              </button>
+            </>
+          }
+        >
+          <div className="modal-sub">
+            팀원 과반이 동의하면 출석으로 인정됩니다.
+          </div>
+          <div className="field">
+            <label className="field-label">사유</label>
+            <textarea
+              className="input"
+              rows={3}
+              placeholder="예) 가족 행사로 참석하지 못했습니다."
+              value={absenceInput}
+              onChange={(e) => setAbsenceInput(e.target.value)}
             />
           </div>
         </Modal>
