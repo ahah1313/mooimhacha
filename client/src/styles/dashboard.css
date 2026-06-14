@@ -1145,6 +1145,77 @@
   align-items: center;
   justify-content: space-between;
 }
+
+/* 태스크 기한 연장 (카드 인라인) */
+.tc-ext-btn {
+  margin-top: 8px;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px dashed rgba(240, 102, 79, 0.5);
+  background: var(--coral-soft);
+  color: var(--coral);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tc-ext-btn:hover {
+  background: rgba(240, 102, 79, 0.18);
+}
+.tc-ext {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.tc-ext-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  color: var(--amber, #b8860b);
+}
+.tc-ext-acts {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.tc-ext-ok,
+.tc-ext-no {
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tc-ext-ok {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.tc-ext-no {
+  background: var(--coral-soft);
+  color: var(--coral);
+}
+.tc-ext-wait {
+  margin-left: auto;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+.lrow-wrap + .lrow-wrap {
+  margin-top: 2px;
+}
+.lrow-wrap .tc-ext,
+.lrow-wrap .tc-ext-btn {
+  margin: 4px 0 8px 12px;
+  width: auto;
+}
 .tc-who {
   display: flex;
   align-items: center;
