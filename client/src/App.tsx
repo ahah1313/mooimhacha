@@ -6,6 +6,7 @@ import HomePage from "@/pages/home/HomePage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 import MeetingLauncher from "@/pages/meeting/MeetingLauncher";
 import ContributionDashboard from "@/pages/meeting/ContributionDashboard";
+import AttendancePage from "@/pages/attendance/AttendancePage";
 import TermsPage from "@/pages/terms/TermsPage";
 import { useToast } from "@/hooks/useToast";
 
@@ -62,6 +63,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <ContributionDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/meetings/:meetingId/attendance"
+          element={
+            <PrivateRoute>
+              <AttendancePage />
             </PrivateRoute>
           }
         />
