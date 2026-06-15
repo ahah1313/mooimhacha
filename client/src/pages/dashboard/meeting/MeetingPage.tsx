@@ -568,11 +568,11 @@ export default function MeetingPage() {
         label: "완료",
         items: [...meetings]
           .filter((m) => m.status === "ended")
-          .sort(
-            (a, b) =>
-              new Date(b.scheduled_at).getTime() -
-              new Date(a.scheduled_at).getTime(),
-          ),
+          .sort((a, b) => {
+            const ta = a.ended_at ?? a.scheduled_at;
+            const tb = b.ended_at ?? b.scheduled_at;
+            return new Date(tb).getTime() - new Date(ta).getTime();
+          }),
       },
     ],
     [meetings],
