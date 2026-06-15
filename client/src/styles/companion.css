@@ -31,6 +31,7 @@ body {
 .cmp-section__head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 6px;
 }
 .cmp-section__head h2 {
@@ -40,6 +41,21 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin: 0;
+}
+.cmp-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-soft);
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+.cmp-toggle-btn:hover {
+  background: var(--surface-3);
 }
 
 /* 헤더 */

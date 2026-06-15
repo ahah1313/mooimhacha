@@ -34,7 +34,9 @@ export function openCompanion(
     return null;
   }
   const pos = loadPosition();
+  const w = Math.round(window.screen.availWidth * 0.8);
   const features = [
+    `width=${w}`,
     `height=${COMPANION_HEIGHT}`,
     pos ? `left=${pos.left}` : "",
     pos ? `top=${pos.top}` : "",

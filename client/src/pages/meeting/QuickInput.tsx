@@ -77,23 +77,14 @@ export default function QuickInput({ members, onDecision, onAction }: Props) {
 
   return (
     <section className="cmp-section cmp-quick">
-      <header
-        className="cmp-section__head"
-        style={{ justifyContent: "space-between" }}
-      >
+      <header className="cmp-section__head">
         <h2>결정 · 액션</h2>
         <button
+          className="cmp-toggle-btn"
           onClick={() => setCollapsed((c) => !c)}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: 11,
-            color: "var(--text-soft)",
-            padding: "0 2px",
-          }}
+          title={collapsed ? "펼치기" : "접기"}
         >
-          {collapsed ? "▼ 펼치기" : "▲ 접기"}
+          <i className={`ti ti-chevron-${collapsed ? "down" : "up"}`} />
         </button>
       </header>
       {!collapsed && (
