@@ -721,15 +721,15 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
       />
 
       <section className="cmp-section cmp-recent">
-        <header className="cmp-section__head">
+        <header
+          className="cmp-section__head cmp-section__head--toggle"
+          onClick={() => setRecentCollapsed((c) => !c)}
+          title={recentCollapsed ? "펼치기" : "접기"}
+        >
           <h2>최근 항목</h2>
-          <button
-            className="cmp-toggle-btn"
-            onClick={() => setRecentCollapsed((c) => !c)}
-            title={recentCollapsed ? "펼치기" : "접기"}
-          >
+          <span className="cmp-toggle-btn">
             <i className={`ti ti-chevron-${recentCollapsed ? "down" : "up"}`} />
-          </button>
+          </span>
         </header>
         {!recentCollapsed && (
           <ul className="cmp-recent-list">

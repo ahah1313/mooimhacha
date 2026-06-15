@@ -48,6 +48,13 @@ body {
   letter-spacing: 0.04em;
   margin: 0;
 }
+.cmp-section__head--toggle {
+  cursor: pointer;
+  user-select: none;
+}
+.cmp-section__head--toggle:hover {
+  opacity: 0.8;
+}
 .cmp-toggle-btn {
   background: none;
   border: none;
@@ -59,9 +66,7 @@ body {
   font-size: 13px;
   display: flex;
   align-items: center;
-}
-.cmp-toggle-btn:hover {
-  background: var(--surface-3);
+  pointer-events: none;
 }
 
 /* 헤더 */

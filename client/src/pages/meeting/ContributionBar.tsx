@@ -51,20 +51,20 @@ export default function ContributionBar({
 
   return (
     <section className="cmp-section cmp-contrib">
-      <header className="cmp-section__head">
+      <header
+        className="cmp-section__head cmp-section__head--toggle"
+        onClick={() => setCollapsed((c) => !c)}
+        title={collapsed ? "전체 보기" : "접기"}
+      >
         <h2>
           발언 비중
           <span className="cmp-info" title="발언 글자수 기반 추정치입니다.">
             ⓘ
           </span>
         </h2>
-        <button
-          className="cmp-toggle-btn"
-          onClick={() => setCollapsed((c) => !c)}
-          title={collapsed ? "전체 보기" : "접기"}
-        >
+        <span className="cmp-toggle-btn">
           <i className={`ti ti-chevron-${collapsed ? "down" : "up"}`} />
-        </button>
+        </span>
       </header>
       <div className="cmp-bars">
         {rows.map((row, i) => {
