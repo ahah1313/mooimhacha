@@ -706,6 +706,14 @@ export default function MeetingPage() {
                       <i className="ti ti-clock" /> {fmt(elapsed)}
                     </span>
                   )}
+                  {selected.status === "active" && (
+                    <span
+                      className="mdh-companion-link"
+                      onClick={() => openCompanion(selected.id, team!.id)}
+                    >
+                      <i className="ti ti-external-link" /> 회의 창 열기
+                    </span>
+                  )}
                 </div>
                 <div className="tabs">
                   {(

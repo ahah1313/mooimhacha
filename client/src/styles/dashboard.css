@@ -534,6 +534,14 @@
   align-items: center;
   gap: 4px;
 }
+.mdh-companion-link {
+  cursor: pointer;
+  color: var(--green);
+  font-weight: 600;
+}
+.mdh-companion-link:hover {
+  opacity: 0.75;
+}
 .tabs {
   display: flex;
   gap: 3px;
