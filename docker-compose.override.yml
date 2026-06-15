@@ -1,0 +1,4 @@
+services:
+  contribution:
+    ports:
+      - "8000:8000"
