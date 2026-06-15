@@ -452,15 +452,32 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
   const handleActivate = (id: number) => {
     const s = socketRef.current;
     if (!s) return;
-    changeAgendaStatus(s, {
-      meeting_id: meetingId,
-      agenda_id: id,
-      activate: true,
-    }).catch(() => {
-      setWsIssue(
-        "안건 상태 변경이 확인되지 않았어요. 잠시 후 다시 시도해 주세요.",
-      );
-    });
+    const active = agendas.find((a) => a.status === "active");
+    const doActivate = () =>
+      changeAgendaStatus(s, {
+        meeting_id: meetingId,
+        agenda_id: id,
+        activate: true,
+      }).catch(() => {
+        setWsIssue(
+          "안건 상태 변경이 확인되지 않았어요. 잠시 후 다시 시도해 주세요.",
+        );
+      });
+    if (active && Number(active.id) !== Number(id)) {
+      changeAgendaStatus(s, {
+        meeting_id: meetingId,
+        agenda_id: Number(active.id),
+        status: "done",
+      })
+        .then(doActivate)
+        .catch(() => {
+          setWsIssue(
+            "안건 상태 변경이 확인되지 않았어요. 잠시 후 다시 시도해 주세요.",
+          );
+        });
+    } else {
+      doActivate();
+    }
   };
   // 완료 = 자동 스위칭: 완료 ack 후 목록 순서상 첫 대기 안건을 이어서 시작한다.
   // activate 한 번으로 합치지 않는 이유 — 서버 activate 의 기존 안건 자동 완료는
