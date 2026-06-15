@@ -11,6 +11,8 @@ import type {
   Meeting,
   Notification,
   TeamContribution,
+  TaskExtension,
+  PendingConsent,
 } from "@/lib/types";
 import "@/styles/home.css";
 
@@ -30,6 +32,14 @@ interface MyTask extends ActionItem {
 interface UpcomingMeeting extends Meeting {
   group: string;
   groupCls: string;
+}
+
+interface TodoItem {
+  type: "extension" | "consent";
+  team_id: number;
+  team_name: string;
+  label: string;
+  created_at: string;
 }
 
 // 상대 시각 표기 (알림·활동)
@@ -95,6 +105,7 @@ export default function HomePage() {
   const [myContrib, setMyContrib] = useState<Map<number, number | null>>(
     new Map(),
   );
+  const [todos, setTodos] = useState<TodoItem[]>([]);
   const [joinCode, setJoinCode] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [notiOpen, setNotiOpen] = useState(false);
@@ -122,7 +133,7 @@ export default function HomePage() {
     void Promise.allSettled(
       teams.map(async (t) => {
         const badgeCls = t.my_role === "leader" ? "b-green" : "b-blue";
-        const [ts, ms, cs] = await Promise.allSettled([
+        const [ts, ms, cs, exts, consents] = await Promise.allSettled([
           apiGet<ActionItem[]>(
             `/action-items?team_id=${t.id}&assignee_id=${user.id}`,
           ),
@@ -130,6 +141,12 @@ export default function HomePage() {
           apiGet<{ members: TeamContribution[] }>(
             `/teams/${t.id}/contributions`,
           ),
+          t.my_role === "leader"
+            ? apiGet<TaskExtension[]>(
+                `/teams/${t.id}/extensions?status=pending`,
+              )
+            : Promise.resolve([] as TaskExtension[]),
+          apiGet<PendingConsent[]>(`/teams/${t.id}/pending-consents`),
         ]);
         return {
           team: t,
@@ -154,6 +171,26 @@ export default function HomePage() {
               ? (cs.value.members.find((c) => c.user_id === user.id)
                   ?.composite_score ?? null)
               : null,
+          todos: [
+            ...(exts.status === "fulfilled"
+              ? exts.value.map((e) => ({
+                  type: "extension" as const,
+                  team_id: t.id,
+                  team_name: t.name,
+                  label: `${e.requester_name} · ${e.task_description}`,
+                  created_at: e.created_at,
+                }))
+              : []),
+            ...(consents.status === "fulfilled"
+              ? consents.value.map((c) => ({
+                  type: "consent" as const,
+                  team_id: t.id,
+                  team_name: t.name,
+                  label: `${c.user_name} · ${c.meeting_topic}`,
+                  created_at: c.created_at,
+                }))
+              : []),
+          ],
         };
       }),
     ).then((results) => {
@@ -167,6 +204,7 @@ export default function HomePage() {
             tasks: MyTask[];
             meetings: UpcomingMeeting[];
             contrib: number | null;
+            todos: TodoItem[];
           }> => r.status === "fulfilled",
         )
         .map((r) => r.value);
@@ -193,6 +231,15 @@ export default function HomePage() {
             );
           })
           .slice(0, 6),
+      );
+      setTodos(
+        ok
+          .flatMap((r) => r.todos)
+          .sort(
+            (a, b) =>
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime(),
+          ),
       );
       setMyContrib(
         new Map(
@@ -528,6 +575,53 @@ export default function HomePage() {
                 </button>
               </div>
             </div>
+            {todos.length > 0 && (
+              <Card
+                icon="ti ti-bell-ringing"
+                title="처리할 일"
+                extra={<span className="card-link">{todos.length}개</span>}
+                style={{ marginBottom: 14 }}
+              >
+                <div style={{ padding: "2px 14px 12px" }}>
+                  {todos.map((item, i) => (
+                    <div
+                      key={i}
+                      className="activity-row"
+                      style={{ cursor: "pointer" }}
+                      onClick={() =>
+                        navigate(
+                          `/dashboard/${item.team_id}/${item.type === "extension" ? "tasks" : "meeting"}`,
+                        )
+                      }
+                    >
+                      <div
+                        className="act-dot"
+                        style={{
+                          background:
+                            item.type === "extension"
+                              ? "var(--amber)"
+                              : "var(--blue)",
+                        }}
+                      />
+                      <div className="act-body" style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 600 }}>
+                          {item.label}
+                        </div>
+                        <div
+                          style={{ fontSize: 11, color: "var(--text-soft)" }}
+                        >
+                          {item.team_name} ·{" "}
+                          {item.type === "extension"
+                            ? "기한 연장 요청"
+                            : "결석 사유 동의"}
+                        </div>
+                      </div>
+                      <div className="act-time">{relTime(item.created_at)}</div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
             <Card
               icon="ti ti-checklist"
               title="내 태스크"

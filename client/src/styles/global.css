@@ -143,6 +143,10 @@ body::after {
 .ti {
   line-height: 1;
 }
+.ti span {
+  font-family: var(--font-body);
+  font-style: normal;
+}
 
 /* ---------- 앱 윈도우 ---------- */
 .app {
@@ -738,7 +742,9 @@ textarea.input {
   opacity: 0;
   transition: opacity 0.15s;
   z-index: 50;
-  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   min-width: max-content;
 }
-.info-tip:hover::after { opacity: 1; }
+.info-tip:hover::after {
+  opacity: 1;
+}

@@ -136,6 +136,15 @@ export interface AttendanceSummary {
   pending_count: number;
 }
 
+export interface PendingConsent {
+  absence_id: number;
+  meeting_id: number;
+  meeting_topic: string;
+  user_name: string;
+  reason: string;
+  created_at: string;
+}
+
 // 기여도 집계 규칙 (서버 team_settings 엔티티 대응)
 export interface TeamSettings {
   team_id: number;

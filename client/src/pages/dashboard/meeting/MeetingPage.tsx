@@ -78,6 +78,7 @@ export default function MeetingPage() {
   const [attendance, setAttendance] = useState<MeetingAttendance | null>(null);
   const [teamSettings, setTeamSettings] = useState<TeamSettings | null>(null);
   const [absenceInput, setAbsenceInput] = useState("");
+  const [absenceSubmitted, setAbsenceSubmitted] = useState(false);
   // 회의별 출결 요약 (목록 배지·미처리 표시용)
   const [summaries, setSummaries] = useState<Map<number, AttendanceSummary>>(
     new Map(),
@@ -220,14 +221,23 @@ export default function MeetingPage() {
     if (tab === "attendance" && selected?.status === "ended" && selectedId) {
       void loadAttendance(selectedId);
       if (!teamSettings && team) {
-        void apiGet<TeamSettings>(`/teams/${team.id}/settings`).then(setTeamSettings).catch(() => null);
+        void apiGet<TeamSettings>(`/teams/${team.id}/settings`)
+          .then(setTeamSettings)
+          .catch(() => null);
       }
     }
   }, [tab, selectedId, selected?.status, loadAttendance]);
 
   useEffect(() => {
-    if (tab === "speak" && selected?.status === "ended" && selectedId && !transcript) {
-      void apiGet<Transcript>(`/meetings/${selectedId}/transcript`).then(setTranscript).catch(() => null);
+    if (
+      tab === "speak" &&
+      selected?.status === "ended" &&
+      selectedId &&
+      !transcript
+    ) {
+      void apiGet<Transcript>(`/meetings/${selectedId}/transcript`)
+        .then(setTranscript)
+        .catch(() => null);
     }
   }, [tab, selectedId, selected?.status, transcript]);
 
@@ -339,15 +349,32 @@ export default function MeetingPage() {
       await apiPost(`/meetings/${selectedId}/absences`, {
         reason: absenceInput.trim(),
       });
-      setModalOpen(null);
-      setAbsenceInput("");
+      setAbsenceSubmitted(true);
       await Promise.all([loadAttendance(selectedId), loadSummaries()]);
-      showToast("결석 사유가 등록되었습니다. 팀원 동의를 기다려 주세요");
     } catch (e) {
       showToast((e as Error).message, "error");
     } finally {
       setBusy(false);
     }
+  }
+
+  function shareKakao(reason: string = absenceInput) {
+    if (!window.Kakao?.isInitialized()) {
+      showToast(
+        "카카오 SDK가 초기화되지 않았습니다. VITE_KAKAO_JS_KEY를 확인해 주세요.",
+        "error",
+      );
+      return;
+    }
+    const meetingName = selected?.topic ?? "제목 없는 회의";
+    window.Kakao.Share.sendCustom({
+      templateId: 134304,
+      templateArgs: {
+        title: `[${team?.name ?? "팀"}] ${meetingName} 결석 동의 알림`,
+        description: `${me?.name ?? "팀원"}님이 결석 사유를 등록했습니다.\n회의: ${meetingName} | 사유: ${reason}`,
+        button: "회의실에서 확인하기",
+      },
+    });
   }
 
   // 다른 멤버의 결석 사유에 동의 — 정족수 도달 시 출석 인정으로 자동 전환
@@ -364,6 +391,20 @@ export default function MeetingPage() {
           ? "출석 인정으로 처리되었습니다"
           : "동의했습니다",
       );
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancelConsent(absenceId: number) {
+    if (!selectedId || busy) return;
+    setBusy(true);
+    try {
+      await apiDelete(`/absences/${absenceId}/consent`);
+      await Promise.all([loadAttendance(selectedId), loadSummaries()]);
+      showToast("동의를 취소했습니다");
     } catch (e) {
       showToast((e as Error).message, "error");
     } finally {
@@ -843,30 +884,71 @@ export default function MeetingPage() {
                     {/* 발화 기록 — 종료된 회의만 */}
                     {selected.status === "ended" && (
                       <>
-                        <div className="panel-label" style={{ marginTop: 18 }}>발화 기록</div>
+                        <div className="panel-label" style={{ marginTop: 18 }}>
+                          발화 기록
+                        </div>
                         {!transcript ? (
-                          <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>불러오는 중…</div>
-                        ) : transcript.sections.every((s) => s.groups.length === 0) ? (
-                          <div className="summary-box"><i className="ti ti-info-circle" />저장된 발화 기록이 없습니다.</div>
+                          <div
+                            style={{
+                              fontSize: 12.5,
+                              color: "var(--text-soft)",
+                            }}
+                          >
+                            불러오는 중…
+                          </div>
+                        ) : transcript.sections.every(
+                            (s) => s.groups.length === 0,
+                          ) ? (
+                          <div className="summary-box">
+                            <i className="ti ti-info-circle" />
+                            저장된 발화 기록이 없습니다.
+                          </div>
                         ) : (
-                          transcript.sections.filter((s) => s.groups.length > 0).map((section) => (
-                            <div key={section.agenda_id} className="utt-section">
-                              <div className="utt-section-title">{section.title}</div>
-                              {section.groups.map((g, gi) => {
-                                const speaker = speak.find((s) => s.user_id === g.user_id);
-                                const idx = speak.findIndex((s) => s.user_id === g.user_id);
-                                return (
-                                  <div key={gi} className="utt-row">
-                                    <div className={`av a${(idx % 4) + 1} av-sm`}>{(speaker?.name ?? "?")[0]}</div>
-                                    <div className="utt-body">
-                                      <span className="utt-name">{speaker?.name ?? `사용자 ${g.user_id}`}<span className="utt-time">{fmt(Math.floor(g.started_at_offset_ms / 1000))}</span></span>
-                                      <span className="utt-text">{g.text}</span>
+                          transcript.sections
+                            .filter((s) => s.groups.length > 0)
+                            .map((section) => (
+                              <div
+                                key={section.agenda_id}
+                                className="utt-section"
+                              >
+                                <div className="utt-section-title">
+                                  {section.title}
+                                </div>
+                                {section.groups.map((g, gi) => {
+                                  const speaker = speak.find(
+                                    (s) => s.user_id === g.user_id,
+                                  );
+                                  const idx = speak.findIndex(
+                                    (s) => s.user_id === g.user_id,
+                                  );
+                                  return (
+                                    <div key={gi} className="utt-row">
+                                      <div
+                                        className={`av a${(idx % 4) + 1} av-sm`}
+                                      >
+                                        {(speaker?.name ?? "?")[0]}
+                                      </div>
+                                      <div className="utt-body">
+                                        <span className="utt-name">
+                                          {speaker?.name ??
+                                            `사용자 ${g.user_id}`}
+                                          <span className="utt-time">
+                                            {fmt(
+                                              Math.floor(
+                                                g.started_at_offset_ms / 1000,
+                                              ),
+                                            )}
+                                          </span>
+                                        </span>
+                                        <span className="utt-text">
+                                          {g.text}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ))
+                                  );
+                                })}
+                              </div>
+                            ))
                         )}
                       </>
                     )}
@@ -876,13 +958,18 @@ export default function MeetingPage() {
                 {/* 출결 */}
                 {tab === "attendance" && (
                   <div className="tab-panel active">
-                    <div className="panel-label">출결 현황
+                    <div className="panel-label">
+                      출결 현황
                       {(() => {
-                        const grace = teamSettings?.punctuality_grace_ratio ?? 0.1;
+                        const grace =
+                          teamSettings?.punctuality_grace_ratio ?? 0.1;
                         const totalMin = selected.total_minutes;
                         const graceMin = Math.round(totalMin * grace);
                         return (
-                          <span className="info-tip" data-tip={`회의 시작 후 ${graceMin}분(총 ${totalMin}분의 ${Math.round(grace * 100)}%) 이내 입장 → 출석\n초과 입장 → 지각\n입장 기록 없음 → 결석`}>
+                          <span
+                            className="info-tip"
+                            data-tip={`회의 시작 후 ${graceMin}분(총 ${totalMin}분의 ${Math.round(grace * 100)}%) 이내 입장 → 출석\n초과 입장 → 지각\n입장 기록 없음 → 결석`}
+                          >
                             <i className="ti ti-info-circle" />
                           </span>
                         );
@@ -904,77 +991,109 @@ export default function MeetingPage() {
                         {attendance.members.map((mem) => {
                           const badge = ATT_BADGE[mem.status];
                           const isMe = me?.id === mem.user_id;
+                          const showSub =
+                            mem.status === "absent" || mem.status === "excused";
                           return (
-                            <div key={mem.user_id} className="att-row">
-                              <div
-                                className={`av a${(mem.user_id % 4) + 1} av-sm`}
-                              >
-                                {mem.name[0]}
+                            <div key={mem.user_id} className="att-item">
+                              {/* 메인 행: 아바타 · 이름 · 배지 */}
+                              <div className="att-row">
+                                <div
+                                  className={`av a${(mem.user_id % 4) + 1} av-sm`}
+                                >
+                                  {mem.name[0]}
+                                </div>
+                                <span className="att-name">{mem.name}</span>
+                                <span
+                                  className="att-badge"
+                                  style={{
+                                    color: badge.color,
+                                    background: badge.bg,
+                                  }}
+                                >
+                                  {badge.label}
+                                  {mem.status === "late" &&
+                                    mem.late_minutes != null &&
+                                    ` ${mem.late_minutes}분`}
+                                </span>
                               </div>
-                              <span className="att-name">{mem.name}</span>
-                              <span
-                                className="att-badge"
-                                style={{
-                                  color: badge.color,
-                                  background: badge.bg,
-                                }}
-                              >
-                                {badge.label}
-                                {mem.status === "late" &&
-                                  mem.late_minutes != null &&
-                                  ` ${mem.late_minutes}분`}
-                              </span>
-                              {/* 본인 결석 + 미입력 → 사유 입력 */}
-                              {isMe &&
-                                mem.status === "absent" &&
-                                !mem.absence && (
-                                  <button
-                                    className="btn btn-primary btn-sm"
-                                    onClick={() => {
-                                      setAbsenceInput("");
-                                      setModalOpen("absence");
-                                    }}
+                              {/* 서브 행: 사유 + 액션 (결석·출석인정만) */}
+                              {showSub && (
+                                <div className="att-sub">
+                                  <span
+                                    className={`att-sub-reason${!mem.absence ? " att-sub-empty" : ""}`}
                                   >
-                                    사유 입력
-                                  </button>
-                                )}
-                              {/* 타인 결석 + 사유 있음 + 미승인 → 동의 */}
-                              {!isMe &&
-                                mem.absence &&
-                                mem.absence.status === "pending" && (
-                                  <button
-                                    className="btn btn-sm"
-                                    disabled={busy || mem.absence.my_consent}
-                                    onClick={() =>
-                                      void consentAbsence(mem.absence!.id)
-                                    }
-                                  >
-                                    {mem.absence.my_consent
-                                      ? `동의함 ${mem.absence.consent_count}/${attendance.consent_required}`
-                                      : `동의 ${mem.absence.consent_count}/${attendance.consent_required}`}
-                                  </button>
-                                )}
+                                    {mem.absence
+                                      ? mem.absence.reason
+                                      : isMe
+                                        ? "사유를 입력해주세요"
+                                        : "사유 미입력"}
+                                  </span>
+                                  <div className="att-sub-actions">
+                                    {/* 본인 + 사유 없음 */}
+                                    {isMe && !mem.absence && (
+                                      <button
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => {
+                                          setAbsenceInput("");
+                                          setModalOpen("absence");
+                                        }}
+                                      >
+                                        사유 입력
+                                      </button>
+                                    )}
+                                    {/* 본인 + pending: 동의 수 + 카카오 공유 */}
+                                    {isMe &&
+                                      mem.absence?.status === "pending" && (
+                                        <>
+                                          <span className="att-consent-count">
+                                            동의 {mem.absence.consent_count}/
+                                            {attendance.consent_required}
+                                          </span>
+                                          <button
+                                            className="btn-kakao"
+                                            onClick={() =>
+                                              shareKakao(mem.absence!.reason)
+                                            }
+                                          >
+                                            <i className="ti ti-brand-kakao">
+                                              <span>카카오 공유</span>
+                                            </i>
+                                          </button>
+                                        </>
+                                      )}
+                                    {/* 타인 + pending: 동의/동의함 */}
+                                    {!isMe &&
+                                      mem.absence?.status === "pending" && (
+                                        <button
+                                          className={`btn btn-sm${mem.absence.my_consent ? " btn-consented" : ""}`}
+                                          disabled={busy}
+                                          onClick={() =>
+                                            mem.absence!.my_consent
+                                              ? void cancelConsent(
+                                                  mem.absence!.id,
+                                                )
+                                              : void consentAbsence(
+                                                  mem.absence!.id,
+                                                )
+                                          }
+                                        >
+                                          {mem.absence.my_consent
+                                            ? `동의함 ${mem.absence.consent_count}/${attendance.consent_required}`
+                                            : `동의 ${mem.absence.consent_count}/${attendance.consent_required}`}
+                                        </button>
+                                      )}
+                                    {/* 인정됨 */}
+                                    {mem.absence?.status === "approved" && (
+                                      <span className="att-reason-ok">
+                                        <i className="ti ti-check" /> 인정됨
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
-                        {/* 사유 상세 (입력된 결석 건) */}
-                        {attendance.members.some((m) => m.absence) && (
-                          <div className="att-reasons">
-                            {attendance.members
-                              .filter((m) => m.absence)
-                              .map((m) => (
-                                <div key={m.user_id} className="att-reason">
-                                  <strong>{m.name}</strong>
-                                  <span>{m.absence!.reason}</span>
-                                  {m.absence!.status === "approved" && (
-                                    <span className="att-reason-ok">
-                                      <i className="ti ti-check" /> 인정됨
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                          </div>
-                        )}
                       </>
                     )}
                   </div>
@@ -1065,11 +1184,17 @@ export default function MeetingPage() {
                             onClick={async () => {
                               setBusy(true);
                               try {
-                                const res = await apiPost<{ summarized: boolean; reason?: string }>(
-                                  `/meetings/${selectedId}/summarize`,
-                                );
+                                const res = await apiPost<{
+                                  summarized: boolean;
+                                  reason?: string;
+                                }>(`/meetings/${selectedId}/summarize`);
                                 if (!res.summarized) {
-                                  showToast(res.reason === "llm_not_configured" ? "API 키가 설정되지 않았습니다." : "요약에 실패했어요. 다시 시도해 주세요.", "error");
+                                  showToast(
+                                    res.reason === "llm_not_configured"
+                                      ? "API 키가 설정되지 않았습니다."
+                                      : "요약에 실패했어요. 다시 시도해 주세요.",
+                                    "error",
+                                  );
                                 } else {
                                   await loadMeetings();
                                   showToast("회의가 요약됐습니다.");
@@ -1081,8 +1206,14 @@ export default function MeetingPage() {
                               }
                             }}
                           >
-                            <i className={`ti ${busy ? "ti-loader-2" : "ti-refresh"}`} />
-                            {busy ? "요약 중…" : selected.summary ? "다시 요약" : "요약 생성"}
+                            <i
+                              className={`ti ${busy ? "ti-loader-2" : "ti-refresh"}`}
+                            />
+                            {busy
+                              ? "요약 중…"
+                              : selected.summary
+                                ? "다시 요약"
+                                : "요약 생성"}
                           </button>
                         </div>
                         {selected.summary ? (
@@ -1092,7 +1223,10 @@ export default function MeetingPage() {
                         ) : (
                           <div className="summary-empty">
                             <i className="ti ti-file-description" />
-                            <span>발화 기록과 결정 사항을 바탕으로 AI가 회의록을 작성합니다.</span>
+                            <span>
+                              발화 기록과 결정 사항을 바탕으로 AI가 회의록을
+                              작성합니다.
+                            </span>
                           </div>
                         )}
                       </div>
@@ -1311,41 +1445,78 @@ export default function MeetingPage() {
           onClose={() => {
             setModalOpen(null);
             setAbsenceInput("");
+            setAbsenceSubmitted(false);
           }}
           actions={
-            <>
+            absenceSubmitted ? (
               <button
                 className="btn"
                 onClick={() => {
                   setModalOpen(null);
                   setAbsenceInput("");
+                  setAbsenceSubmitted(false);
                 }}
               >
-                취소
+                닫기
               </button>
-              <button
-                className="btn btn-primary"
-                onClick={() => void saveAbsence()}
-                disabled={busy}
-              >
-                제출
-              </button>
-            </>
+            ) : (
+              <>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setModalOpen(null);
+                    setAbsenceInput("");
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => void saveAbsence()}
+                  disabled={busy}
+                >
+                  제출
+                </button>
+              </>
+            )
           }
         >
-          <div className="modal-sub">
-            팀원 과반이 동의하면 출석으로 인정됩니다.
-          </div>
-          <div className="field">
-            <label className="field-label">사유</label>
-            <textarea
-              className="input"
-              rows={3}
-              placeholder="예) 가족 행사로 참석하지 못했습니다."
-              value={absenceInput}
-              onChange={(e) => setAbsenceInput(e.target.value)}
-            />
-          </div>
+          {absenceSubmitted ? (
+            <>
+              <div className="modal-sub">
+                결석 사유가 등록되었습니다. 팀원들에게 공유해보세요.
+              </div>
+              <button
+                className="btn-kakao"
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  padding: "10px 16px",
+                  fontSize: "13px",
+                }}
+                onClick={() => shareKakao()}
+              >
+                <i className="ti ti-brand-kakao" />
+                카카오톡으로 공유
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="modal-sub">
+                팀원 과반이 동의하면 출석으로 인정됩니다.
+              </div>
+              <div className="field">
+                <label className="field-label">사유</label>
+                <textarea
+                  className="input"
+                  rows={3}
+                  placeholder="예) 가족 행사로 참석하지 못했습니다."
+                  value={absenceInput}
+                  onChange={(e) => setAbsenceInput(e.target.value)}
+                />
+              </div>
+            </>
+          )}
         </Modal>
       )}
 

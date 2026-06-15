@@ -49,6 +49,9 @@ export class ContributionClient {
       this.warnUnconfigured();
       return null;
     }
+    this.logger.log(
+      `[회의 산정] meeting_id=${payload.meeting.id} 참여자=${payload.participant_user_ids.length}명`,
+    );
     const cfg = mapTeamSettings(payload.team_settings);
     const scores = await Promise.all(
       payload.participant_user_ids.map(async (uid) => {
@@ -89,6 +92,9 @@ export class ContributionClient {
       this.warnUnconfigured();
       return null;
     }
+    this.logger.log(
+      `[팀 산정] team_id=${payload.team_id} 멤버=${payload.members.length}명 회의=${payload.meetings.length}건`,
+    );
     const cfg = mapTeamSettings(payload.team_settings);
     const now = new Date();
     const members = await Promise.all(
@@ -152,9 +158,10 @@ export class ContributionClient {
 
   private async post<T>(path: string, body: unknown): Promise<T> {
     const apiKey = this.config.get<string>('CONTRIBUTION_SERVICE_API_KEY');
-    // 외부 서버 행에도 회의 종료·대시보드 조회가 멈추지 않게 20초 타임아웃
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20_000);
+    const t0 = Date.now();
+    this.logger.log(`→ POST ${this.baseUrl}${path}`);
     try {
       const res = await fetch(`${this.baseUrl}${path}`, {
         method: 'POST',
@@ -166,14 +173,21 @@ export class ContributionClient {
         signal: controller.signal,
       });
       if (!res.ok) {
-        this.logger.error(`기여도 서버 응답 오류(${path}): ${res.status}`);
+        this.logger.error(`← ${res.status} ${path} (${Date.now() - t0}ms)`);
         throw new ServiceUnavailableException('기여도 산정 서버 오류');
       }
-      return (await res.json()) as T;
+      const data = (await res.json()) as T;
+      this.logger.log(`← 200 OK ${path} (${Date.now() - t0}ms)`);
+      return data;
     } catch (e) {
-      // abort(타임아웃) 에러도 여기로 들어와 동일하게 503으로 변환된다
       if (e instanceof ServiceUnavailableException) throw e;
-      this.logger.error(`기여도 서버 호출 실패(${path})`, e as Error);
+      const err = e as Error & { cause?: Error & { code?: string } };
+      const cause = err.cause
+        ? ` | cause: ${err.cause.code ?? ''} ${err.cause.message ?? ''} ${String(err.cause)}`.trim()
+        : '';
+      this.logger.error(
+        `← 연결 실패 ${path} (${Date.now() - t0}ms): ${err.message}${cause}`,
+      );
       throw new ServiceUnavailableException(
         '기여도 산정 서버에 연결할 수 없습니다.',
       );
