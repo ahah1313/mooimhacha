@@ -59,6 +59,7 @@ export interface ActionItem {
   assignee_id: number | null;
   description: string;
   due_date: string | null;
+  completed_at: string | null;
   difficulty: number;
   status: string;
   source: "manual" | "ai_extracted";

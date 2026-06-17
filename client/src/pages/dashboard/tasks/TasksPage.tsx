@@ -65,6 +65,12 @@ function fmtTime(d: Date): string {
   return `${ampm} ${h12}:${String(m).padStart(2, "0")}`;
 }
 
+function fmtCompleted(iso: string): string {
+  const d = new Date(iso);
+  const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getMonth() + 1}/${d.getDate()}(${DAYS[d.getDay()]}) ${fmtTime(d)}`;
+}
+
 // Date → datetime-local input 값 ("YYYY-MM-DDTHH:mm")
 function toLocalInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -612,31 +618,53 @@ export default function TasksPage() {
                           </span>
                           {who}
                         </span>
-                        {dd.label && (
-                          <div
-                            className="tc-due"
-                            style={{
-                              color: danger
-                                ? "var(--coral)"
-                                : warn
-                                  ? "var(--amber)"
-                                  : "var(--text-soft)",
-                            }}
-                          >
-                            <i className="ti ti-calendar" />
-                            {dd.label}
-                            {dd.timeLabel && (
-                              <span style={{ fontWeight: 500, marginLeft: 2 }}>
-                                {dd.timeLabel}
-                              </span>
-                            )}
-                            {dd.dDay && (
-                              <span style={{ fontWeight: 700, marginLeft: 4 }}>
-                                {dd.dDay}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "flex-end",
+                            gap: 2,
+                          }}
+                        >
+                          {dd.label && (
+                            <div
+                              className="tc-due"
+                              style={{
+                                color: danger
+                                  ? "var(--coral)"
+                                  : warn
+                                    ? "var(--amber)"
+                                    : "var(--text-soft)",
+                              }}
+                            >
+                              <i className="ti ti-calendar" />
+                              {dd.label}
+                              {dd.timeLabel && (
+                                <span
+                                  style={{ fontWeight: 500, marginLeft: 2 }}
+                                >
+                                  {dd.timeLabel}
+                                </span>
+                              )}
+                              {dd.dDay && (
+                                <span
+                                  style={{ fontWeight: 700, marginLeft: 4 }}
+                                >
+                                  {dd.dDay}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {status === "완료" && t.completed_at && (
+                            <div
+                              className="tc-due"
+                              style={{ color: "var(--green)" }}
+                            >
+                              <i className="ti ti-check" />
+                              {fmtCompleted(t.completed_at)} 완료
+                            </div>
+                          )}
+                        </div>
                       </div>
                       {renderExtension(t)}
                     </div>
@@ -690,20 +718,39 @@ export default function TasksPage() {
                     {nameOf(t.assignee_id)[0]}
                   </div>
                   <div
-                    className={`lrow-due ${danger ? "due-red" : warn ? "due-amber" : "due-soft"}`}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      gap: 2,
+                      minWidth: 140,
+                    }}
                   >
-                    {dd.label ? (
-                      <>
-                        {dd.label}
-                        {dd.timeLabel && ` ${dd.timeLabel}`}
-                        {dd.dDay && (
-                          <span style={{ fontWeight: 700, marginLeft: 5 }}>
-                            {dd.dDay}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      "기한 없음"
+                    <div
+                      className={`lrow-due ${danger ? "due-red" : warn ? "due-amber" : "due-soft"}`}
+                    >
+                      {dd.label ? (
+                        <>
+                          {dd.label}
+                          {dd.timeLabel && ` ${dd.timeLabel}`}
+                          {dd.dDay && (
+                            <span style={{ fontWeight: 700, marginLeft: 5 }}>
+                              {dd.dDay}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        "기한 없음"
+                      )}
+                    </div>
+                    {status === "완료" && t.completed_at && (
+                      <div
+                        className="lrow-due"
+                        style={{ color: "var(--green)" }}
+                      >
+                        <i className="ti ti-check" style={{ marginRight: 3 }} />
+                        {fmtCompleted(t.completed_at)} 완료
+                      </div>
                     )}
                   </div>
                   <span className="tc-diff">
