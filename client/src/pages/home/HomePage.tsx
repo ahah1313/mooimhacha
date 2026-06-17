@@ -677,38 +677,6 @@ export default function HomePage() {
               </div>
             </Card>
 
-            <Card icon="ti ti-activity" title="최근 활동">
-              <div style={{ padding: "2px 14px 12px" }}>
-                {notis.length === 0 && (
-                  <div
-                    style={{
-                      padding: "14px 0",
-                      fontSize: 12.5,
-                      color: "var(--text-soft)",
-                    }}
-                  >
-                    아직 활동 기록이 없습니다.
-                  </div>
-                )}
-                {notis.slice(0, 4).map((n) => {
-                  const st = NOTI_STYLE[n.type] ?? {
-                    icon: "ti ti-bell",
-                    color: "var(--text-soft)",
-                  };
-                  return (
-                    <div key={n.id} className="activity-row">
-                      <div
-                        className="act-dot"
-                        style={{ background: st.color }}
-                      />
-                      <div className="act-body">{n.title}</div>
-                      <div className="act-time">{relTime(n.created_at)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-
             <Card
               icon="ti ti-calendar-event"
               title="예정된 회의"
