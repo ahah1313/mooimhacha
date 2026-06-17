@@ -440,6 +440,83 @@ export default function TasksPage() {
     requestStatusChange(task, task.status === "done" ? "할 일" : "완료");
   }
 
+  function shareTaskStatus() {
+    if (!team) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // 오늘 마감 (미완료)
+    const todayExpiring = tasks.filter((t) => {
+      if (t.status === "done" || !t.due_date) return false;
+      const dueDay = new Date(t.due_date);
+      dueDay.setHours(0, 0, 0, 0);
+      return dueDay >= today && dueDay < tomorrow;
+    });
+
+    // 기한 초과 (미완료)
+    const overdue = tasks.filter((t) => {
+      if (t.status === "done" || !t.due_date) return false;
+      const dueDay = new Date(t.due_date);
+      dueDay.setHours(0, 0, 0, 0);
+      return dueDay < today;
+    });
+
+    if (todayExpiring.length === 0 && overdue.length === 0) {
+      showToast("공유할 내용이 없습니다.");
+      return;
+    }
+
+    if (!window.Kakao?.isInitialized()) {
+      showToast("카카오 SDK가 초기화되지 않았습니다.", "error");
+      return;
+    }
+
+    const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
+    const now = new Date();
+    const dateStr = `${now.getMonth() + 1}/${now.getDate()}(${DAYS[now.getDay()]})`;
+
+    const origin = window.location.origin;
+    console.log(origin);
+    const IMG_DONE = `${origin}/icon-done.png`;
+    const IMG_WARN = `${origin}/icon-warning.png`;
+
+    const items: { title: string; desc: string; img: string }[] = [
+      ...todayExpiring.map((t) => ({
+        title: `🔔 ${t.description}`,
+        desc: `오늘 마감 · ${nameOf(t.assignee_id)}`,
+        img: IMG_DONE,
+      })),
+      ...overdue.map((t) => {
+        const dueDay = new Date(t.due_date!);
+        dueDay.setHours(0, 0, 0, 0);
+        const days = Math.round(
+          (today.getTime() - dueDay.getTime()) / 86400000,
+        );
+        return {
+          title: `⚠️ ${t.description}`,
+          desc: `D+${days} · ${nameOf(t.assignee_id)}`,
+          img: IMG_WARN,
+        };
+      }),
+    ];
+
+    const templateArgs: Record<string, string> = {
+      title: `[${team.name}] 태스크 현황 (${dateStr})`,
+    };
+    for (let i = 0; i < 5; i++) {
+      templateArgs[`t${i + 1}`] = items[i]?.title ?? "";
+      templateArgs[`d${i + 1}`] = items[i]?.desc ?? "";
+      templateArgs[`img${i + 1}`] = items[i]?.img ?? "";
+    }
+
+    window.Kakao.Share.sendCustom({
+      templateId: 134415,
+      templateArgs,
+    });
+  }
+
   async function addTask() {
     if (!team || saving) return;
     if (!newDesc.trim()) {
@@ -507,12 +584,19 @@ export default function TasksPage() {
             </button>
           </div>
         </div>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => setModalOpen(true)}
-        >
-          <i className="ti ti-plus" /> 태스크 추가
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {team?.my_role === "leader" && (
+            <button className="btn btn-sm" onClick={shareTaskStatus}>
+              <i className="ti ti-share" /> 공유하기
+            </button>
+          )}
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => setModalOpen(true)}
+          >
+            <i className="ti ti-plus" /> 태스크 추가
+          </button>
+        </div>
       </div>
 
       <div className="prog-strip">

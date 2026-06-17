@@ -15,6 +15,37 @@ interface Window {
         templateId: number;
         templateArgs?: Record<string, string>;
       }) => void;
+      sendDefault: (
+        options:
+          | {
+              objectType: "feed";
+              content: {
+                title: string;
+                description: string;
+                imageUrl: string;
+                link: { mobileWebUrl: string; webUrl: string };
+              };
+              buttons?: {
+                title: string;
+                link: { mobileWebUrl: string; webUrl: string };
+              }[];
+            }
+          | {
+              objectType: "list";
+              headerTitle: string;
+              headerLink: { mobileWebUrl: string; webUrl: string };
+              contents: {
+                title: string;
+                description?: string;
+                imageUrl?: string;
+                link: { mobileWebUrl: string; webUrl: string };
+              }[];
+              buttons?: {
+                title: string;
+                link: { mobileWebUrl: string; webUrl: string };
+              }[];
+            },
+      ) => void;
     };
   };
 }
