@@ -53,7 +53,7 @@ export class LlmService {
     const prompt =
       '아래 회의 자료(안건별 요약·회의록·수동 입력된 결정·액션)를 바탕으로 회의를 종합 정리해라.\n' +
       '반드시 아래 JSON 형식만 출력한다.\n' +
-      'one_liner 필드는 이 회의를 한두 문장으로 핵심만 요약한 한국어 문장이다 (최대 100자).\n' +
+      'one_liner 필드는 발화·결정 내용에서 실제로 논의된 핵심 주제와 결론을 1~2문장 한국어로 서술한다. 회의 제목·안건 이름을 그대로 옮기지 말고 "무엇을 논의했고 어떻게 결론 났는지"를 담아 작성한다 (최대 100자).\n' +
       'summary 필드는 마크다운 형식의 상세 회의록으로 작성한다 — ## 제목, ### 안건, **굵게**, 불릿 리스트 등을 활용해 회의 전체 내용을 빠짐없이 정리한다.\n' +
       '{"one_liner": string, "summary": string, ' +
       '"missed_decisions": [{"content": string, "source_utterance_id": number|null}], ' +
