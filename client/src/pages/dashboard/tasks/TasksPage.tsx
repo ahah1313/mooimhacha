@@ -946,6 +946,7 @@ export default function TasksPage() {
                   className="input"
                   type="date"
                   style={{ flex: 2 }}
+                  min={new Date().toLocaleDateString("sv-SE")}
                   value={newDue}
                   onChange={(e) => setNewDue(e.target.value)}
                 />
