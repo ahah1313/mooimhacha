@@ -291,8 +291,8 @@ export class RealtimeGateway
         ? null
         : Math.min(1, Math.max(0, Number(body.confidence)));
 
-    // ★ 발화 시점 진행 중 안건에 자동 매칭
-    const agendaId = await this.agendasService.getActiveAgendaId(meetingId);
+    // ★ 발화 시작 오프셋 기준으로 안건에 자동 매핑
+    const agendaId = await this.agendasService.getActiveAgendaId(meetingId, startedAt);
 
     // 발화 원본은 즉시 RDS 저장 (텍스트만, 음성 미저장)
     const saved = await this.utteranceRepo.save(

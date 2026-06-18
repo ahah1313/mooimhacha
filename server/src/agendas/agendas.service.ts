@@ -256,13 +256,34 @@ export class AgendasService {
     return { meeting_id: meetingId, generated: true, agendas: created };
   }
 
-  // 게이트웨이가 발화 태깅에 사용 — 현재 진행 중 안건
-  async getActiveAgendaId(meetingId: number): Promise<number | null> {
-    const active = await this.agendaRepo.findOne({
-      where: { meeting_id: meetingId, status: 'active' },
+  // 게이트웨이가 발화 태깅에 사용 — 발화 시작 오프셋 기준으로 안건 매핑
+  // 발화 started_at_offset_ms가 안건 started_at_offset_ms 이후인 안건 중 가장 최근 시작한 것
+  // (active 우선, 없으면 done 중 가장 최근) → 수신 시각 기반보다 정확
+  async getActiveAgendaId(
+    meetingId: number,
+    utteranceStartOffset?: number,
+  ): Promise<number | null> {
+    // 오프셋 없으면 기존 방식(현재 active)으로 폴백
+    if (utteranceStartOffset == null) {
+      const active = await this.agendaRepo.findOne({
+        where: { meeting_id: meetingId, status: 'active' },
+        order: { started_at_offset_ms: 'DESC' },
+      });
+      return active?.id ?? null;
+    }
+
+    // 발화 시작 오프셋 이전에 시작된 안건 중 가장 늦게 시작한 것
+    const agendas = await this.agendaRepo.find({
+      where: { meeting_id: meetingId },
       order: { started_at_offset_ms: 'DESC' },
     });
-    return active?.id ?? null;
+    const candidate = agendas.find(
+      (a) =>
+        a.started_at_offset_ms != null &&
+        a.started_at_offset_ms <= utteranceStartOffset &&
+        (a.status === 'active' || a.status === 'done'),
+    );
+    return candidate?.id ?? null;
   }
 
   private fillActualMinutes(a: Agenda) {
