@@ -172,7 +172,7 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
     setEnded(true);
   }, [meetingId]);
 
-  // 재연결 후 끊긴 동안의 결정·액션·안건(요약 포함)을 REST 스냅샷으로 재동기화.
+  // 재연결 후 끊긴 동안의 결정·액션·아젠다(요약 포함)을 REST 스냅샷으로 재동기화.
   // (서버 join 응답은 t0·presence·기여도 스냅샷만 — 기여도는 join 시 서버가 다시 broadcast)
   const resyncSnapshots = useCallback(async () => {
     try {
@@ -465,7 +465,7 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
         activate: true,
       }).catch(() => {
         setWsIssue(
-          "안건 상태 변경이 확인되지 않았어요. 잠시 후 다시 시도해 주세요.",
+          "아젠다 상태 변경이 확인되지 않았어요. 잠시 후 다시 시도해 주세요.",
         );
       });
     if (active && Number(active.id) !== Number(id)) {
@@ -477,16 +477,16 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
         .then(doActivate)
         .catch(() => {
           setWsIssue(
-            "안건 상태 변경이 확인되지 않았어요. 잠시 후 다시 시도해 주세요.",
+            "아젠다 상태 변경이 확인되지 않았어요. 잠시 후 다시 시도해 주세요.",
           );
         });
     } else {
       doActivate();
     }
   };
-  // 완료 = 자동 스위칭: 완료 ack 후 목록 순서상 첫 대기 안건을 이어서 시작한다.
-  // activate 한 번으로 합치지 않는 이유 — 서버 activate 의 기존 안건 자동 완료는
-  // broadcast 되지 않아 다른 참가자 화면에 이전 안건이 active 로 남고, 완료 시
+  // 완료 = 자동 스위칭: 완료 ack 후 목록 순서상 첫 대기 아젠다을 이어서 시작한다.
+  // activate 한 번으로 합치지 않는 이유 — 서버 activate 의 기존 아젠다 자동 완료는
+  // broadcast 되지 않아 다른 참가자 화면에 이전 아젠다이 active 로 남고, 완료 시
   // LLM 요약 트리거도 done 경로에만 있다.
   const handleDone = (id: number) => {
     const s = socketRef.current;
@@ -509,7 +509,7 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
       })
       .catch(() => {
         setWsIssue(
-          "안건 상태 변경이 확인되지 않았어요. 잠시 후 다시 시도해 주세요.",
+          "아젠다 상태 변경이 확인되지 않았어요. 잠시 후 다시 시도해 주세요.",
         );
       });
   };
@@ -531,7 +531,7 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
       broadcast("agenda:added");
     } catch {
       // 회의 중 사소한 쓰기 실패 — 풀스크린 에러 대신 인라인 배너로 회의 화면 보존
-      setWsIssue("안건을 추가하지 못했어요. 잠시 후 다시 시도해 주세요.");
+      setWsIssue("아젠다을 추가하지 못했어요. 잠시 후 다시 시도해 주세요.");
     }
   };
 
@@ -546,7 +546,7 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
     } catch {
       lateArrivalRef.current = { kind: "decision", text: content };
       setWsIssue(
-        "결정사항 저장이 확인되지 않았어요. 입력을 복원했어요 — 다시 시도해 주세요.",
+        "결정 사항 저장이 확인되지 않았어요. 입력을 복원했어요 — 다시 시도해 주세요.",
       );
       return false;
     }
@@ -665,8 +665,8 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
         <div className="cmp-agenda-hint">
           💡 회의 시작 5분이 지났어요.{" "}
           {agendas.length === 0
-            ? "안건을 추가해 보세요!"
-            : "안건을 시작해 보세요!"}
+            ? "아젠다을 추가해 보세요!"
+            : "아젠다을 시작해 보세요!"}
         </div>
       )}
       {wsIssue && (

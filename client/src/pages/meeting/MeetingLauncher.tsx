@@ -44,7 +44,7 @@ export default function MeetingLauncher() {
   const [meetingType, setMeetingType] = useState<
     "regular" | "partial" | "test"
   >("regular");
-  // 회의 생성 모달 + 지난 회의 참고 (AI 안건 생성과 같은 소스: 직전 요약·결정·미해결 액션)
+  // 회의 생성 모달 + 지난 회의 참고 (AI 아젠다 생성과 같은 소스: 직전 요약·결정·미해결 액션)
   const [showCreate, setShowCreate] = useState(false);
   const [prevRef, setPrevRef] = useState<{
     meeting: Meeting;
@@ -416,7 +416,7 @@ export default function MeetingLauncher() {
         />
       )}
 
-      {/* 회의 생성 모달 — 지난 회의 내용을 참고하며 안건·주제를 정할 수 있게 */}
+      {/* 회의 생성 모달 — 지난 회의 내용을 참고하며 아젠다·주제를 정할 수 있게 */}
       {showCreate && (
         <Modal
           title="새 회의"
@@ -497,7 +497,7 @@ export default function MeetingLauncher() {
                 <p>{prevRef.meeting.summary ?? "요약이 아직 없어요."}</p>
                 {prevRef.decisions.length > 0 && (
                   <>
-                    <em>결정사항</em>
+                    <em>결정 사항</em>
                     <ul>
                       {prevRef.decisions.map((d) => (
                         <li key={d.id}>{d.content}</li>

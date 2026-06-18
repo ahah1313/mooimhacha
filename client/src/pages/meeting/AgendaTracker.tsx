@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { Agenda } from "@/lib/types";
 
-// 안건 추적 (★) — 상태 3단계(대기/진행 중/완료) + 시간 시각화.
-// 예상 시간이 있으면 게이지: 70% 경고색 → 100% 초과(펄스 + 다음 안건 제안) → 150% 강한 신호.
+// 아젠다 추적 (★) — 상태 3단계(대기/진행 중/완료) + 시간 시각화.
+// 예상 시간이 있으면 게이지: 70% 경고색 → 100% 초과(펄스 + 다음 아젠다 제안) → 150% 강한 신호.
 // 예상 시간이 없으면(0 = 미설정) 경과 시간만 카운트업 — 목표 없는 게이지는 그리지 않는다.
 interface Props {
   agendas: Agenda[];
@@ -50,7 +50,7 @@ export default function AgendaTracker({
   return (
     <section className="cmp-section cmp-agenda">
       <header className="cmp-section__head">
-        <h2>안건</h2>
+        <h2>아젠다</h2>
       </header>
       <ul className="cmp-agenda-list">
         {agendas.map((a) => {
@@ -65,7 +65,7 @@ export default function AgendaTracker({
           const hasGauge =
             isActive && elapsedMs !== null && a.estimated_minutes > 0;
           const summary = summaries[a.id] ?? a.summary;
-          // 초과 시 '다음 안건으로' 제안 대상 — 목록 순서상 첫 대기 안건
+          // 초과 시 '다음 아젠다으로' 제안 대상 — 목록 순서상 첫 대기 아젠다
           const nextPending = agendas.find(
             (p) => p.status === "pending" && Number(p.id) !== Number(a.id),
           );
@@ -130,7 +130,7 @@ export default function AgendaTracker({
                       className="cmp-agenda-next"
                       onClick={() => onDone(a.id)}
                     >
-                      다음 안건으로 →
+                      다음 아젠다으로 →
                     </button>
                   )}
                 </div>
@@ -145,7 +145,7 @@ export default function AgendaTracker({
       <div className="cmp-agenda-add">
         <input
           value={newTitle}
-          placeholder="즉석 안건 추가"
+          placeholder="즉석 아젠다 추가"
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submitNew()}
         />

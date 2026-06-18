@@ -1513,7 +1513,7 @@ export default function MeetingPage() {
                       <div className="summary-box">
                         <i className="ti ti-sparkles" />
                         회의가 종료되면 AI가 자동으로
-                        결정사항·액션아이템·회의록을 요약합니다.
+                        결정 사항·태스크·회의록을 요약합니다.
                       </div>
                     ) : (
                       <>

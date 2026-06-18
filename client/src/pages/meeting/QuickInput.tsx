@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { TeamMember } from "@/lib/types";
 
-// 결정사항·액션 빠른 입력. 단축키 Ctrl/Cmd+D(결정)·Ctrl/Cmd+A(액션).
-// 입력된 항목은 현재 진행 중 안건에 서버가 자동 연결.
+// 결정 사항·액션 빠른 입력. 단축키 Ctrl/Cmd+D(결정)·Ctrl/Cmd+A(액션).
+// 입력된 항목은 현재 진행 중 아젠다에 서버가 자동 연결.
 // 저장 실패(false 반환) 시 비웠던 입력을 복원한다 — 사용자 입력 무음 증발 방지.
 interface Props {
   members: TeamMember[];
@@ -96,7 +96,7 @@ export default function QuickInput({ members, onDecision, onAction }: Props) {
             <input
               ref={decisionRef}
               value={decision}
-              placeholder="결정사항 한 줄 + Enter"
+              placeholder="결정 사항 한 줄 + Enter"
               onChange={(e) => setDecision(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submitDecision()}
             />

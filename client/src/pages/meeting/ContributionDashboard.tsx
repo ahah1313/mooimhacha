@@ -266,11 +266,11 @@ export default function ContributionDashboard() {
         </table>
       </div>
 
-      {/* 결정사항 */}
+      {/* 결정 사항 */}
       <div className="live-card">
-        <h2>결정사항</h2>
+        <h2>결정 사항</h2>
         {decisions.length === 0 ? (
-          <p className="live-sub">결정사항이 없습니다.</p>
+          <p className="live-sub">결정 사항이 없습니다.</p>
         ) : (
           <ul>
             {decisions.map((d) => (
@@ -284,7 +284,7 @@ export default function ContributionDashboard() {
 
       {/* 액션 */}
       <div className="live-card">
-        <h2>액션 아이템</h2>
+        <h2>태스크</h2>
         {actions.length === 0 ? (
           <p className="live-sub">액션이 없습니다.</p>
         ) : (
