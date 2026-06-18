@@ -58,7 +58,10 @@ export default function ContributionBar({
       >
         <h2>
           발언 비중
-          <span className="cmp-info" title="발언 글자수 기반 추정치입니다.">
+          <span
+            className="cmp-info info-tip"
+            data-tip="발언 글자수 기반 추정치입니다."
+          >
             ⓘ
           </span>
         </h2>

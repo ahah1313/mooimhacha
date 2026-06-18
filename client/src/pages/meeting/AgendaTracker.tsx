@@ -147,7 +147,9 @@ export default function AgendaTracker({
           value={newTitle}
           placeholder="즉석 아젠다 추가"
           onChange={(e) => setNewTitle(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submitNew()}
+          onKeyDown={(e) =>
+            e.key === "Enter" && !e.nativeEvent.isComposing && submitNew()
+          }
         />
         <button
           className={

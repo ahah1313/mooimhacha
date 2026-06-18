@@ -40,7 +40,7 @@ body {
   margin-bottom: 6px;
 }
 .cmp-section__head h2 {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-mut);
   text-transform: uppercase;
@@ -62,7 +62,7 @@ body {
   padding: 2px 4px;
   border-radius: 4px;
   line-height: 1;
-  font-size: 13px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   pointer-events: none;
@@ -84,13 +84,13 @@ body {
   min-width: 0;
 }
 .cmp-header__title strong {
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .cmp-header__time {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-soft);
 }
 .cmp-header__actions {
@@ -103,7 +103,7 @@ body {
   background: var(--surface);
   border-radius: 8px;
   padding: 5px 8px;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
 }
 .cmp-mic-btn.on {
@@ -177,7 +177,7 @@ body {
   background: var(--blue);
 }
 .cmp-agenda-title {
-  font-size: 13px;
+  font-size: 14px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -185,7 +185,7 @@ body {
   white-space: nowrap;
 }
 .cmp-agenda-est {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-soft);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -216,7 +216,7 @@ body {
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   padding: 2px 4px;
   color: var(--text-mut);
 }
@@ -224,7 +224,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--coral);
   margin-top: 4px;
   font-weight: 600;
@@ -235,14 +235,14 @@ body {
   background: var(--surface);
   color: var(--coral);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 2px 8px;
   cursor: pointer;
   white-space: nowrap;
 }
 .cmp-agenda-summary {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-mut);
   margin-top: 6px;
   padding-top: 6px;
@@ -259,7 +259,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: 13px;
   background: var(--surface);
 }
 .cmp-agenda-add button {
@@ -275,11 +275,15 @@ body {
   flex: 0 0 auto;
   padding-top: 6px;
   padding-bottom: 6px;
+  overflow: visible;
 }
 .cmp-info {
   margin-left: 4px;
   cursor: help;
   color: var(--text-soft);
+}
+.cmp-info.info-tip::after {
+  z-index: 9999;
 }
 .cmp-bars {
   display: flex;
@@ -296,7 +300,7 @@ body {
 .cmp-bar-name {
   flex: 0 0 64px;
   width: 64px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -318,7 +322,7 @@ body {
 }
 .cmp-bar-count {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-soft);
   white-space: nowrap;
 }
@@ -332,10 +336,10 @@ body {
 .cmp-quick-block {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
 }
 .cmp-quick-block label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-mut);
   font-weight: 700;
 }
@@ -343,7 +347,7 @@ body {
   background: var(--surface-3);
   border-radius: 3px;
   padding: 0 3px;
-  font-size: 9px;
+  font-size: 10px;
   margin-left: 3px;
 }
 .cmp-quick input,
@@ -351,7 +355,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 3px 6px;
-  font-size: 11px;
+  font-size: 12px;
   background: var(--surface);
 }
 .cmp-quick-action-meta {
@@ -370,13 +374,13 @@ body {
   border-radius: 6px;
   padding: 0 8px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
 }
 .cmp-quick-next {
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-mut);
   white-space: nowrap;
   cursor: pointer;
@@ -392,7 +396,7 @@ body {
   background: var(--amber-soft, #fdf2dc);
   color: var(--amber, #b6802a);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   text-align: center;
 }
 /* 5분 경과 아젠다 안내 */
@@ -411,7 +415,7 @@ body {
   background: var(--coral-soft);
   color: var(--coral);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   text-align: center;
 }
 .cmp-agenda-item--hint {
@@ -429,7 +433,7 @@ body {
   background: var(--amber-soft, #fdf2dc);
   color: var(--amber, #b6802a);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   text-align: center;
 }
 /* 실시간 인식 피드백 (켜짐 상태) */
@@ -439,7 +443,7 @@ body {
   background: var(--green-soft);
   color: var(--green-deep);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   text-align: center;
 }
 /* 실시간 발화 미리보기 */
@@ -449,7 +453,7 @@ body {
   background: var(--surface-2);
   color: var(--text-soft);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-style: italic;
   border-left: 3px solid var(--green);
 }
@@ -461,7 +465,7 @@ body {
   background: var(--coral-soft);
   color: var(--coral);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   text-align: center;
 }
 .cmp-mic-banner {
@@ -477,7 +481,7 @@ body {
   color: inherit;
   border-radius: 6px;
   padding: 2px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
@@ -497,13 +501,13 @@ body {
   gap: 4px;
 }
 .cmp-recent-list li {
-  font-size: 12px;
+  font-size: 13px;
   display: flex;
   gap: 6px;
   align-items: center;
 }
 .cmp-tag {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   border-radius: 4px;
   padding: 1px 5px;
@@ -518,11 +522,11 @@ body {
   color: var(--amber);
 }
 .cmp-mic {
-  font-size: 11px;
+  font-size: 12px;
 }
 .cmp-empty {
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: 13px;
 }
 .cmp-error,
 .cmp-ended {

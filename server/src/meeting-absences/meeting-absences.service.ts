@@ -345,7 +345,7 @@ export class MeetingAbsencesService {
     return 'present';
   }
 
-  // 예정 시간 대비 5분 초과 입장 여부를 presence 이벤트로 직접 판정
+  // 실제 시작(t0) 기준 5분 초과 입장 여부를 presence 이벤트로 직접 판정
   private isLateByPresence(
     meeting: Meeting,
     presence: PresenceEvent[],
@@ -361,14 +361,7 @@ export class MeetingAbsencesService {
       .map((p) => p.timestamp_offset_ms);
     if (joins.length === 0) return false;
     const firstOffset = Math.min(...joins);
-    const lateSec =
-      Math.max(
-        0,
-        meeting.t0_timestamp.getTime() -
-          meeting.scheduled_at.getTime() +
-          firstOffset,
-      ) / 1000;
-    return lateSec > 300;
+    return Math.max(0, firstOffset) / 1000 > 300;
   }
 
   // 그 회의에 입장(join/reconnect) 기록이 있는 user 집합
@@ -411,7 +404,7 @@ export class MeetingAbsencesService {
     return new Date(meeting.t0_timestamp.getTime() + firstOffset).toISOString();
   }
 
-  // 지각 분 — 예정 시간 대비 첫 입장까지 경과 분
+  // 지각 분 — 실제 시작(t0) 기준 첫 입장까지 경과 분
   private lateMinutes(
     meeting: Meeting,
     presence: PresenceEvent[],
@@ -427,13 +420,7 @@ export class MeetingAbsencesService {
       .map((p) => p.timestamp_offset_ms);
     if (joins.length === 0) return null;
     const firstOffset = Math.min(...joins);
-    const lateMs = Math.max(
-      0,
-      meeting.t0_timestamp.getTime() -
-        meeting.scheduled_at.getTime() +
-        firstOffset,
-    );
-    return Math.round(lateMs / 60000);
+    return Math.round(Math.max(0, firstOffset) / 60000);
   }
 
   private async requireMeeting(meetingId: number): Promise<Meeting> {
