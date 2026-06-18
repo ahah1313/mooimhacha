@@ -128,6 +128,13 @@ export default function TasksPage() {
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
 
+  // 카카오 공유 배치
+  const [shareBatches, setShareBatches] = useState<
+    { title: string; desc: string; img: string }[][]
+  >([]);
+  const [shareBatchIdx, setShareBatchIdx] = useState(0);
+  const [shareTitle, setShareTitle] = useState("");
+
   // 기한 연장: 태스크별 최신 요청 (action_item_id → 요청)
   const [extensions, setExtensions] = useState<Map<number, TaskExtension>>(
     new Map(),
@@ -447,7 +454,6 @@ export default function TasksPage() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // 오늘 마감 (미완료)
     const todayExpiring = tasks.filter((t) => {
       if (t.status === "done" || !t.due_date) return false;
       const dueDay = new Date(t.due_date);
@@ -455,7 +461,6 @@ export default function TasksPage() {
       return dueDay >= today && dueDay < tomorrow;
     });
 
-    // 기한 초과 (미완료)
     const overdue = tasks.filter((t) => {
       if (t.status === "done" || !t.due_date) return false;
       const dueDay = new Date(t.due_date);
@@ -478,7 +483,6 @@ export default function TasksPage() {
     const dateStr = `${now.getMonth() + 1}/${now.getDate()}(${DAYS[now.getDay()]})`;
 
     const origin = window.location.origin;
-    console.log(origin);
     const IMG_DONE = `${origin}/icon-done.png`;
     const IMG_WARN = `${origin}/icon-warning.png`;
 
@@ -502,19 +506,34 @@ export default function TasksPage() {
       }),
     ];
 
-    const templateArgs: Record<string, string> = {
-      title: `[${team.name}] 태스크 현황 (${dateStr})`,
-    };
-    for (let i = 0; i < 5; i++) {
-      templateArgs[`t${i + 1}`] = items[i]?.title ?? "";
-      templateArgs[`d${i + 1}`] = items[i]?.desc ?? "";
-      templateArgs[`img${i + 1}`] = items[i]?.img ?? "";
+    const batches: { title: string; desc: string; img: string }[][] = [];
+    for (let i = 0; i < items.length; i += 5) {
+      batches.push(items.slice(i, i + 5));
     }
 
-    window.Kakao.Share.sendCustom({
-      templateId: 134415,
-      templateArgs,
-    });
+    setShareTitle(`태스크 현황 (${dateStr})`);
+    setShareBatches(batches);
+    setShareBatchIdx(0);
+  }
+
+  function sendCurrentBatch() {
+    const batch = shareBatches[shareBatchIdx];
+    if (!batch) return;
+
+    const templateArgs: Record<string, string> = { title: shareTitle };
+    for (let i = 0; i < 5; i++) {
+      templateArgs[`t${i + 1}`] = batch[i]?.title ?? "";
+      templateArgs[`d${i + 1}`] = batch[i]?.desc ?? "";
+      templateArgs[`img${i + 1}`] = batch[i]?.img ?? "";
+    }
+
+    window.Kakao.Share.sendCustom({ templateId: 134415, templateArgs });
+
+    if (shareBatchIdx + 1 >= shareBatches.length) {
+      setShareBatches([]);
+    } else {
+      setShareBatchIdx(shareBatchIdx + 1);
+    }
   }
 
   async function addTask() {
@@ -1157,6 +1176,73 @@ export default function TasksPage() {
           }}
           onClose={() => setStatusChangePending(null)}
         />
+      )}
+
+      {/* 카카오 공유 미리보기 모달 */}
+      {shareBatches.length > 0 && (
+        <Modal
+          title={`카카오 공유 ${shareBatchIdx + 1}/${shareBatches.length}`}
+          onClose={() => setShareBatches([])}
+          actions={
+            <>
+              <button className="btn" onClick={() => setShareBatches([])}>
+                취소
+              </button>
+              <button className="btn btn-primary" onClick={sendCurrentBatch}>
+                <i className="ti ti-brand-kakao" /> {shareBatchIdx + 1}/
+                {shareBatches.length} 보내기
+              </button>
+            </>
+          }
+        >
+          <div className="modal-sub">아래 내용이 카카오톡으로 공유됩니다.</div>
+          {shareBatches[shareBatchIdx].map((item, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 0",
+                borderBottom: "1px solid var(--border-2)",
+              }}
+            >
+              <img
+                src={item.img}
+                alt=""
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--text-main)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {item.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-soft)",
+                    marginTop: 2,
+                  }}
+                >
+                  {item.desc}
+                </div>
+              </div>
+            </div>
+          ))}
+        </Modal>
       )}
 
       {/* 기한 연장 요청 모달 */}
