@@ -232,8 +232,6 @@ export default function OverviewPage() {
               ? `${new Date(derived.nextDue.due_date).getMonth() + 1}/${new Date(derived.nextDue.due_date).getDate()} · ${derived.nextDue.description ?? ""}`
               : "예정된 마감 없음",
             valStyle: {
-              fontSize: 20,
-              paddingTop: 8,
               color: nextDueInfo?.color,
             },
           },
