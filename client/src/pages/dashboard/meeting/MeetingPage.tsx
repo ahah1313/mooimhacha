@@ -820,8 +820,22 @@ export default function MeetingPage() {
             <>
               <div className="mdetail-head">
                 <div className="mdh-top">
-                  <div className="mdh-title">
-                    {selected.topic ?? "제목 없는 회의"}
+                  <div className="mdh-top-left">
+                    <div className="mdh-title">
+                      {selected.topic ?? "제목 없는 회의"}
+                    </div>
+                    <div className="mdh-badges">
+                      <span className={`spill ${spillCls[selected.status]}`}>
+                        {spillLabel[selected.status]}
+                      </span>
+                      <span
+                        className={`mdh-type-badge mdh-type-${selected.meeting_type}`}
+                      >
+                        {selected.meeting_type === "regular"
+                          ? "전체 회의"
+                          : "부분 회의"}
+                      </span>
+                    </div>
                   </div>
                   {selected.status === "scheduled" && (
                     <button
@@ -853,15 +867,9 @@ export default function MeetingPage() {
                   )}
                 </div>
                 <div className="mdh-meta">
-                  <span
-                    style={{
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      gap: 3,
-                    }}
-                  >
+                  <div className="mdh-meta-dates">
+                    <i className="ti ti-calendar" />
                     <span>
-                      <i className="ti ti-calendar" />{" "}
                       {(() => {
                         const d = new Date(selected.scheduled_at);
                         const today = new Date();
@@ -879,63 +887,38 @@ export default function MeetingPage() {
                     {selected.status === "ended" &&
                       selected.t0_timestamp &&
                       selected.ended_at && (
-                        <span>
-                          {(() => {
-                            const tf = (d: Date) =>
-                              d.toLocaleTimeString("ko-KR", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              });
-                            const s = new Date(selected.t0_timestamp!);
-                            const e = new Date(selected.ended_at!);
-                            const today = new Date();
-                            const day =
-                              s.toDateString() === today.toDateString()
-                                ? "오늘"
-                                : `${s.getMonth() + 1}월 ${s.getDate()}일`;
-                            const min = Math.round(
-                              (e.getTime() - s.getTime()) / 60000,
-                            );
-                            const dur =
-                              min >= 60
-                                ? `${Math.floor(min / 60)}시간${min % 60 ? ` ${min % 60}분` : ""}`
-                                : `${min}분`;
-                            return `${day} ${tf(s)} ~ ${tf(e)} (${dur})`;
-                          })()}
-                        </span>
+                        <>
+                          <span />
+                          <span>
+                            {(() => {
+                              const tf = (d: Date) =>
+                                d.toLocaleTimeString("ko-KR", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                });
+                              const s = new Date(selected.t0_timestamp!);
+                              const e = new Date(selected.ended_at!);
+                              const today = new Date();
+                              const day =
+                                s.toDateString() === today.toDateString()
+                                  ? "오늘"
+                                  : `${s.getMonth() + 1}월 ${s.getDate()}일`;
+                              const min = Math.round(
+                                (e.getTime() - s.getTime()) / 60000,
+                              );
+                              const dur =
+                                min >= 60
+                                  ? `${Math.floor(min / 60)}시간${min % 60 ? ` ${min % 60}분` : ""}`
+                                  : `${min}분`;
+                              return `${day} ${tf(s)} ~ ${tf(e)} (${dur})`;
+                            })()}
+                          </span>
+                        </>
                       )}
-                  </span>
+                  </div>
                   {selected.status !== "ended" && (
                     <span>
                       <i className="ti ti-users" /> {joinedCount}명
-                    </span>
-                  )}
-                  {selected.meeting_type === "partial" && (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: "var(--blue)",
-                        background: "var(--blue-soft)",
-                        borderRadius: 4,
-                        padding: "2px 6px",
-                      }}
-                    >
-                      부분 회의
-                    </span>
-                  )}
-                  {selected.meeting_type === "regular" && (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: "var(--green)",
-                        background: "var(--green-soft)",
-                        borderRadius: 4,
-                        padding: "2px 6px",
-                      }}
-                    >
-                      전체 회의
                     </span>
                   )}
                   {selected.status === "active" && (
