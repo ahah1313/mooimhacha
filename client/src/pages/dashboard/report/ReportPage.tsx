@@ -80,7 +80,9 @@ export default function ReportPage() {
     if (!team) return;
     let alive = true;
     void Promise.allSettled([
-      apiGet<{ members: TeamContribution[] }>(`/teams/${team.id}/contributions`),
+      apiGet<{ members: TeamContribution[] }>(
+        `/teams/${team.id}/contributions`,
+      ),
       apiGet<Meeting[]>(`/meetings?team_id=${team.id}`),
       apiGet<ActionItem[]>(`/action-items?team_id=${team.id}`),
     ]).then(([cs, ms, ts]) => {
@@ -120,9 +122,7 @@ export default function ReportPage() {
       pct(target.task_score) ?? 0,
     ];
     const avgOf = (sel: (m: TeamContribution) => number | null | undefined) => {
-      const vs = members
-        .map(sel)
-        .filter((v): v is number => v != null);
+      const vs = members.map(sel).filter((v): v is number => v != null);
       return vs.length ? (vs.reduce((a, v) => a + v, 0) / vs.length) * 100 : 0;
     };
     const avg = [
@@ -198,7 +198,9 @@ export default function ReportPage() {
         </div>
         <div>
           <div className="rb-score-lbl">종합 달성률</div>
-          <div className="rb-score">{overall == null ? "—" : `${overall}%`}</div>
+          <div className="rb-score">
+            {overall == null ? "—" : `${overall}%`}
+          </div>
         </div>
       </div>
 
@@ -210,14 +212,26 @@ export default function ReportPage() {
       >
         <div style={{ padding: "0 18px 14px" }}>
           {members.length === 0 && (
-            <div style={{ fontSize: 12.5, color: "var(--text-soft)", padding: "10px 0" }}>
+            <div
+              style={{
+                fontSize: 12.5,
+                color: "var(--text-soft)",
+                padding: "10px 0",
+              }}
+            >
               아직 산정된 기여도가 없습니다. 회의를 진행하면 집계돼요.
             </div>
           )}
           {members.map((m, i) => {
             const score = pct(m.composite_score);
             const scoreCls =
-              score == null ? "md" : score >= 50 ? "hi" : score >= 25 ? "md" : "lo";
+              score == null
+                ? "md"
+                : score >= 50
+                  ? "hi"
+                  : score >= 25
+                    ? "md"
+                    : "lo";
             const myTasks = tasks.filter((t) => t.assignee_id === m.user_id);
             const myDone = myTasks.filter((t) => t.status === "done");
             const actionPct = myTasks.length
@@ -296,7 +310,9 @@ export default function ReportPage() {
                   ))}
                 </div>
                 <div className="mrc-bar">
-                  <i style={{ width: `${score ?? 0}%`, background: barColor }} />
+                  <i
+                    style={{ width: `${score ?? 0}%`, background: barColor }}
+                  />
                 </div>
               </div>
             );
@@ -310,7 +326,9 @@ export default function ReportPage() {
         title="기여도 레이더"
         extra={
           <span className="card-link" style={{ cursor: "default" }}>
-            {radar ? `${radar.name}${radar.isMe ? " (나)" : ""} vs 팀 평균` : ""}
+            {radar
+              ? `${radar.name}${radar.isMe ? " (나)" : ""} vs 팀 평균`
+              : ""}
           </span>
         }
         style={{ marginBottom: 14 }}
@@ -319,7 +337,9 @@ export default function ReportPage() {
           {radar ? (
             <svg id="radar" width="240" height="240" viewBox="0 0 240 240" />
           ) : (
-            <div style={{ fontSize: 12.5, color: "var(--text-soft)", padding: 18 }}>
+            <div
+              style={{ fontSize: 12.5, color: "var(--text-soft)", padding: 18 }}
+            >
               회의를 진행하면 레이더가 채워집니다.
             </div>
           )}
@@ -358,7 +378,13 @@ export default function ReportPage() {
       <Card icon="ti ti-calendar" title="회의별 요약">
         <div style={{ padding: "0 18px 14px" }}>
           {sessions.length === 0 && (
-            <div style={{ fontSize: 12.5, color: "var(--text-soft)", padding: "10px 0" }}>
+            <div
+              style={{
+                fontSize: 12.5,
+                color: "var(--text-soft)",
+                padding: "10px 0",
+              }}
+            >
               진행한 회의가 없습니다.
             </div>
           )}
@@ -386,7 +412,7 @@ export default function ReportPage() {
                     </span>
                   </div>
                   <div className="ms-body">
-                    {m.summary ?? "요약이 아직 없습니다."}
+                    {m.one_liner ?? "요약이 아직 없습니다."}
                   </div>
                   <div className="ms-meta">
                     {m.status === "active"
