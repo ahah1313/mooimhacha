@@ -22,7 +22,7 @@ interface Team {
   course_name: string;
   my_role: "leader" | "member";
   member_count: number;
-  members: string[];
+  members: { name: string; role: string }[];
 }
 
 // 내 태스크/예정 회의에 소속 그룹 이름을 같이 표기하기 위한 합성 타입

@@ -26,7 +26,7 @@ export interface Meeting {
   status: MeetingStatus;
   t0_timestamp: string | null;
   ended_at: string | null;
-  meeting_type: string;
+  meeting_type: "regular" | "partial";
   one_liner?: string | null;
   summary?: string | null;
 }
