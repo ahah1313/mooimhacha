@@ -109,6 +109,24 @@ export class MeetingsController {
     return this.meetingsService.confirm(req.user.id, id);
   }
 
+  @Post(':id/attend')
+  @ApiOperation({ summary: '회의 참가 기록 (active 회의)' })
+  attend(
+    @Request() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.meetingsService.attend(req.user.id, id);
+  }
+
+  @Get(':id/joined-count')
+  @ApiOperation({ summary: '회의 참가 인원 수' })
+  joinedCount(
+    @Request() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.meetingsService.getJoinedCount(req.user.id, id);
+  }
+
   @Post(':id/contributions/recompute')
   @ApiOperation({ summary: '기여도 재산정 (종료된 회의 — 산정 실패 복구용)' })
   recomputeContributions(

@@ -51,6 +51,8 @@ export class MeetingsService {
     private actionRepo: Repository<ActionItem>,
     @InjectRepository(TeamMembership)
     private membershipRepo: Repository<TeamMembership>,
+    @InjectRepository(PresenceEvent)
+    private presenceRepo: Repository<PresenceEvent>,
     private teamsService: TeamsService,
     private contributionsService: ContributionsService,
     private llmService: LlmService,
@@ -333,6 +335,49 @@ export class MeetingsService {
     });
     if (!m) throw new ForbiddenException('회의 참가 권한이 없습니다.');
     return meeting;
+  }
+
+  async attend(userId: number, meetingId: number) {
+    const meeting = await this.assertParticipant(userId, meetingId);
+    if (meeting.status !== 'active') {
+      throw new BadRequestException('진행 중인 회의에만 참가할 수 있습니다.');
+    }
+    const existing = await this.presenceRepo.findOne({
+      where: {
+        meeting_id: meetingId,
+        user_id: userId,
+        event_type: In(['join', 'reconnect']) as unknown as 'join',
+      },
+    });
+    if (existing) return { ok: true, alreadyJoined: true };
+    const offset = meeting.t0_timestamp
+      ? Date.now() - new Date(meeting.t0_timestamp).getTime()
+      : 0;
+    await this.presenceRepo.save(
+      this.presenceRepo.create({
+        meeting_id: meetingId,
+        user_id: userId,
+        event_type: 'join',
+        disconnect_classification: null,
+        timestamp_offset_ms: offset,
+        reason: null,
+      }),
+    );
+    return { ok: true, alreadyJoined: false };
+  }
+
+  async getJoinedCount(userId: number, meetingId: number) {
+    await this.assertParticipant(userId, meetingId);
+    const events = await this.presenceRepo.find({
+      where: { meeting_id: meetingId },
+    });
+    const joined = new Set<number>();
+    for (const e of events) {
+      if (e.event_type === 'join' || e.event_type === 'reconnect') {
+        joined.add(e.user_id);
+      }
+    }
+    return { count: joined.size, hasJoined: joined.has(userId) };
   }
 
   // 기여도 재산정 — 회의 종료 시 산정 실패(scored=false)의 복구 경로.

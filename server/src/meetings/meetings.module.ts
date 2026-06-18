@@ -6,6 +6,7 @@ import { Utterance } from '../entities/utterance.entity';
 import { Decision } from '../entities/decision.entity';
 import { ActionItem } from '../entities/action-item.entity';
 import { TeamMembership } from '../entities/team-membership.entity';
+import { PresenceEvent } from '../entities/presence-event.entity';
 import { TeamsModule } from '../teams/teams.module';
 import { ContributionsModule } from '../contributions/contributions.module';
 import { LlmModule } from '../llm/llm.module';
@@ -22,6 +23,7 @@ import { MeetingsService } from './meetings.service';
       Decision,
       ActionItem,
       TeamMembership,
+      PresenceEvent,
     ]),
     TeamsModule,
     ContributionsModule,

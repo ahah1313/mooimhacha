@@ -59,7 +59,11 @@ const ATT_BADGE: Record<
 
 const AV_GRADS = ["var(--av1)", "var(--av2)", "var(--av3)", "var(--av4)"];
 
-function meetingMeta(m: Meeting, memberCount: number): string {
+function meetingMeta(
+  m: Meeting,
+  memberCount: number,
+  attendedCount?: number,
+): string {
   const d = new Date(m.scheduled_at);
   const today = new Date();
   const day =
@@ -79,7 +83,8 @@ function meetingMeta(m: Meeting, memberCount: number): string {
     const endStr = sameDay
       ? end.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
       : fmt(end);
-    return `${fmt(start)} ~ ${endStr}`;
+    const countStr = attendedCount !== undefined ? ` · ${attendedCount}명` : "";
+    return `${fmt(start)} ~ ${endStr}${countStr}`;
   }
   return `${day} ${time} · ${memberCount}명`;
 }
@@ -97,6 +102,9 @@ export default function MeetingPage() {
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [attendance, setAttendance] = useState<MeetingAttendance | null>(null);
   const [teamSettings, setTeamSettings] = useState<TeamSettings | null>(null);
+  const [hasJoined, setHasJoined] = useState<boolean | null>(null);
+  const [joinedCount, setJoinedCount] = useState(0);
+  const [joiningMeeting, setJoiningMeeting] = useState(false);
   const [absenceInput, setAbsenceInput] = useState("");
   const [absenceSubmitted, setAbsenceSubmitted] = useState(false);
   // 회의별 출결 요약 (목록 배지·미처리 표시용)
@@ -297,9 +305,6 @@ export default function MeetingPage() {
 
   useEffect(() => {
     setAttendance(null);
-    if (selectedId && selected?.status === "active") {
-      void loadAttendance(selectedId);
-    }
     if (tab === "attendance" && selected?.status === "ended" && selectedId) {
       void loadAttendance(selectedId);
       if (!teamSettings && team) {
@@ -309,6 +314,20 @@ export default function MeetingPage() {
       }
     }
   }, [tab, selectedId, selected?.status, loadAttendance]);
+
+  useEffect(() => {
+    setHasJoined(null);
+    setJoinedCount(0);
+    if (!selectedId || selected?.status === "ended") return;
+    void apiGet<{ count: number; hasJoined: boolean }>(
+      `/meetings/${selectedId}/joined-count`,
+    )
+      .then(({ count, hasJoined: hj }) => {
+        setJoinedCount(count);
+        setHasJoined(hj);
+      })
+      .catch(() => null);
+  }, [selectedId, selected?.status]);
 
   useEffect(() => {
     if (
@@ -652,6 +671,26 @@ export default function MeetingPage() {
     }
   }
 
+  async function attendMeeting() {
+    if (!selected || joiningMeeting) return;
+    setJoiningMeeting(true);
+    try {
+      const res = await apiPost<{ ok: true; alreadyJoined: boolean }>(
+        `/meetings/${selected.id}/attend`,
+        {},
+      );
+      setHasJoined(true);
+      if (!res.alreadyJoined) {
+        setJoinedCount((c) => c + 1);
+        showToast("참가 완료!");
+      }
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setJoiningMeeting(false);
+    }
+  }
+
   // status → CSS 클래스/레이블 매핑. as const로 유니온 키 타입 접근 보장.
   const spillCls = {
     active: "spill-live",
@@ -692,7 +731,11 @@ export default function MeetingPage() {
     (s) => s.speech_ratio != null && s.speech_ratio < 0.1,
   );
   const headMeta = selected
-    ? meetingMeta(selected, team?.member_count ?? 0)
+    ? meetingMeta(
+        selected,
+        team?.member_count ?? 0,
+        summaries.get(selected.id)?.attended_count,
+      )
     : "";
 
   return (
@@ -758,7 +801,11 @@ export default function MeetingPage() {
                             </span>
                           </div>
                           <div className="mcard-meta">
-                            {meetingMeta(m, team?.member_count ?? 0)}
+                            {meetingMeta(
+                              m,
+                              team?.member_count ?? 0,
+                              summaries.get(m.id)?.attended_count,
+                            )}
                           </div>
                         </div>
                       );
@@ -802,20 +849,68 @@ export default function MeetingPage() {
                       <i className="ti ti-player-stop" /> 회의 종료
                     </button>
                   )}
+                  {selected.status === "active" && hasJoined === false && (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => void attendMeeting()}
+                      disabled={joiningMeeting}
+                    >
+                      <i className="ti ti-login" />{" "}
+                      {joiningMeeting ? "참가 중…" : "회의 참여"}
+                    </button>
+                  )}
+                  {selected.status === "active" && hasJoined === true && (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "var(--green)",
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <i className="ti ti-check" /> 참가 완료
+                    </span>
+                  )}
                 </div>
                 <div className="mdh-meta">
                   <span>
                     <i className="ti ti-calendar" /> {headMeta}
                   </span>
-                  <span>
-                    <i className="ti ti-users" />{" "}
-                    {selected?.status === "scheduled"
-                      ? "0"
-                      : (attendance?.members.filter(
-                          (m) => m.status === "present" || m.status === "late",
-                        ).length ?? "-")}
-                    명
-                  </span>
+                  {selected.status !== "ended" && (
+                    <span>
+                      <i className="ti ti-users" /> {joinedCount}명
+                    </span>
+                  )}
+                  {selected.meeting_type === "partial" && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "var(--blue)",
+                        background: "var(--blue-soft)",
+                        borderRadius: 4,
+                        padding: "2px 6px",
+                      }}
+                    >
+                      부분 회의
+                    </span>
+                  )}
+                  {selected.meeting_type === "regular" && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "var(--green)",
+                        background: "var(--green-soft)",
+                        borderRadius: 4,
+                        padding: "2px 6px",
+                      }}
+                    >
+                      전체 회의
+                    </span>
+                  )}
                   {selected.status === "active" && (
                     <span style={{ color: "var(--coral)", fontWeight: 700 }}>
                       <i className="ti ti-clock" /> {fmt(elapsed)}

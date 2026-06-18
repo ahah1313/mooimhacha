@@ -138,6 +138,7 @@ export interface AttendanceSummary {
   meeting_id: number;
   my_status: AttendanceStatus;
   pending_count: number;
+  attended_count: number;
 }
 
 export interface PendingConsent {

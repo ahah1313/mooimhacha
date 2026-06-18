@@ -100,14 +100,18 @@ export class MeetingAbsencesService {
     });
     if (meetings.length === 0) return [];
     const ids = meetings.map((m) => m.id);
-    const [myScores, myPresence, absences, myConsents] = await Promise.all([
-      this.scoreRepo.find({ where: { meeting_id: In(ids), user_id: userId } }),
-      this.presenceRepo.find({
-        where: { meeting_id: In(ids), user_id: userId },
-      }),
-      this.absenceRepo.find({ where: { meeting_id: In(ids) } }),
-      this.consentRepo.find({ where: { voter_id: userId } }),
-    ]);
+    const [myScores, myPresence, allPresence, absences, myConsents] =
+      await Promise.all([
+        this.scoreRepo.find({
+          where: { meeting_id: In(ids), user_id: userId },
+        }),
+        this.presenceRepo.find({
+          where: { meeting_id: In(ids), user_id: userId },
+        }),
+        this.presenceRepo.find({ where: { meeting_id: In(ids) } }),
+        this.absenceRepo.find({ where: { meeting_id: In(ids) } }),
+        this.consentRepo.find({ where: { voter_id: userId } }),
+      ]);
     const myScoreByMeeting = new Map(
       myScores.map((s) => [Number(s.meeting_id), s]),
     );
@@ -117,6 +121,16 @@ export class MeetingAbsencesService {
         .map((p) => Number(p.meeting_id)),
     );
     const myConsentSet = new Set(myConsents.map((c) => Number(c.absence_id)));
+
+    // 회의별 참가 인원 수 (join/reconnect 기록이 있는 고유 user 수)
+    const attendedByMeeting = new Map<number, Set<number>>();
+    for (const p of allPresence) {
+      if (p.event_type === 'join' || p.event_type === 'reconnect') {
+        const mid = Number(p.meeting_id);
+        if (!attendedByMeeting.has(mid)) attendedByMeeting.set(mid, new Set());
+        attendedByMeeting.get(mid)!.add(Number(p.user_id));
+      }
+    }
 
     return meetings.map((m) => {
       const mid = Number(m.id);
@@ -140,6 +154,7 @@ export class MeetingAbsencesService {
         meeting_id: mid,
         my_status: status,
         pending_count: pendingCount,
+        attended_count: attendedByMeeting.get(mid)?.size ?? 0,
       };
     });
   }
