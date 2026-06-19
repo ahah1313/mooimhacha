@@ -74,7 +74,12 @@ export interface TaskExtension {
   requester_name: string;
   task_description: string;
   current_due_date: string | null;
-  requested_due_date: string;
+  current_difficulty: number | null;
+  current_assignee_id: number | null;
+  requested_due_date: string | null;
+  requested_description: string | null;
+  requested_difficulty: number | null;
+  requested_assignee_id: number | null;
   reason: string;
   status: "pending" | "approved" | "rejected";
   created_at: string;

@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -24,7 +23,7 @@ export class TaskExtensionsService {
     private teamsService: TeamsService,
   ) {}
 
-  // 담당자가 기한 지난·미완료 태스크에 연장 요청
+  // 팀원 누구나 진행 중인 태스크의 이름·난이도·담당자·마감일 변경 요청
   async requestExtension(
     userId: number,
     actionItemId: number,
@@ -36,51 +35,54 @@ export class TaskExtensionsService {
     if (!action) throw new NotFoundException('태스크를 찾을 수 없습니다.');
     await this.teamsService.requireMembership(userId, action.team_id);
 
-    if (Number(action.assignee_id) !== userId) {
-      throw new ForbiddenException('담당자만 연장을 요청할 수 있습니다.');
-    }
     if (action.status !== 'todo' && action.status !== 'in_progress') {
       throw new BadRequestException(
-        '진행 중인 태스크만 연장을 요청할 수 있습니다.',
+        '진행 중인 태스크만 수정을 요청할 수 있습니다.',
       );
     }
-    if (!action.due_date) {
-      throw new BadRequestException('기한이 없는 태스크입니다.');
-    }
-    const now = new Date();
-    if (action.due_date.getTime() >= now.getTime()) {
-      throw new BadRequestException('아직 기한이 지나지 않았습니다.');
-    }
-    const requested = new Date(dto.requested_due_date);
-    if (requested.getTime() <= action.due_date.getTime()) {
-      throw new BadRequestException('새 기한은 기존 기한 이후여야 합니다.');
-    }
+
+    const hasChange =
+      dto.requested_due_date !== undefined ||
+      dto.requested_description !== undefined ||
+      dto.requested_difficulty !== undefined ||
+      dto.requested_assignee_id !== undefined;
+    if (!hasChange) throw new BadRequestException('변경할 항목이 없습니다.');
+
     const existing = await this.extRepo.findOne({
       where: { action_item_id: actionItemId, status: 'pending' },
     });
-    if (existing) {
-      throw new BadRequestException(
-        '이미 처리 대기 중인 연장 요청이 있습니다.',
-      );
-    }
 
-    return this.extRepo.save(
-      this.extRepo.create({
-        action_item_id: actionItemId,
-        requester_id: userId,
-        requested_due_date: requested,
-        reason: dto.reason,
-        status: 'pending',
-      }),
-    );
+    const payload = {
+      action_item_id: actionItemId,
+      requester_id: userId,
+      requested_due_date: dto.requested_due_date
+        ? new Date(dto.requested_due_date)
+        : null,
+      requested_description: dto.requested_description ?? null,
+      requested_difficulty: dto.requested_difficulty ?? null,
+      requested_assignee_id: dto.requested_assignee_id ?? null,
+      reason: dto.reason,
+      status: 'pending' as const,
+    };
+
+    if (existing) {
+      return this.extRepo.save({ ...existing, ...payload });
+    }
+    return this.extRepo.save(this.extRepo.create(payload));
   }
 
-  // 팀의 연장 요청 목록 (status 필터) — 팀장 처리 목록 + 본인 요청 조회
+  // 팀의 수정 요청 목록 (status 필터)
   async list(userId: number, teamId: number, status?: string) {
     await this.teamsService.requireMembership(userId, teamId);
     const actions = await this.actionRepo.find({
       where: { team_id: teamId },
-      select: { id: true, description: true, due_date: true },
+      select: {
+        id: true,
+        description: true,
+        due_date: true,
+        difficulty: true,
+        assignee_id: true,
+      },
     });
     if (actions.length === 0) return [];
     const actionById = new Map(actions.map((a) => [Number(a.id), a]));
@@ -102,7 +104,13 @@ export class TaskExtensionsService {
         requester_name: names.get(Number(e.requester_id)) ?? '알 수 없음',
         task_description: action?.description ?? '',
         current_due_date: action?.due_date?.toISOString() ?? null,
-        requested_due_date: e.requested_due_date.toISOString(),
+        current_difficulty: action?.difficulty ?? null,
+        current_assignee_id:
+          action?.assignee_id != null ? Number(action.assignee_id) : null,
+        requested_due_date: e.requested_due_date?.toISOString() ?? null,
+        requested_description: e.requested_description,
+        requested_difficulty: e.requested_difficulty,
+        requested_assignee_id: e.requested_assignee_id,
         reason: e.reason,
         status: e.status,
         created_at: e.created_at.toISOString(),
@@ -110,21 +118,33 @@ export class TaskExtensionsService {
     });
   }
 
-  // 팀장 수락 — 태스크 기한을 요청한 날짜로 변경
+  // 팀장 수락 — 요청된 항목만 적용
   async approve(userId: number, extensionId: number) {
     const { ext, action } = await this.requirePendingForLeader(
       userId,
       extensionId,
     );
     if (!ext || !action) return { status: 'closed' };
-    action.due_date = ext.requested_due_date;
+
+    if (ext.requested_due_date !== null)
+      action.due_date = ext.requested_due_date;
+    if (ext.requested_description !== null)
+      action.description = ext.requested_description;
+    if (ext.requested_difficulty !== null)
+      action.difficulty = ext.requested_difficulty;
+    if (ext.requested_assignee_id !== null) {
+      // -1 = 담당자 해제, 양수 = 새 담당자
+      action.assignee_id =
+        ext.requested_assignee_id === -1 ? null : ext.requested_assignee_id;
+    }
+
     await this.actionRepo.save(action);
     ext.status = 'approved';
     await this.extRepo.save(ext);
     return { status: 'approved' };
   }
 
-  // 팀장 거절 — 태스크는 그대로, 담당자는 재요청 가능
+  // 팀장 거절
   async reject(userId: number, extensionId: number) {
     const { ext } = await this.requirePendingForLeader(userId, extensionId);
     if (!ext) return { status: 'closed' };
@@ -133,10 +153,9 @@ export class TaskExtensionsService {
     return { status: 'rejected' };
   }
 
-  // 팀장 권한 확인 + pending 요청 로드 (이미 처리됐으면 ext=null 반환 → 멱등)
   private async requirePendingForLeader(userId: number, extensionId: number) {
     const ext = await this.extRepo.findOne({ where: { id: extensionId } });
-    if (!ext) throw new NotFoundException('연장 요청을 찾을 수 없습니다.');
+    if (!ext) throw new NotFoundException('수정 요청을 찾을 수 없습니다.');
     const action = await this.actionRepo.findOne({
       where: { id: ext.action_item_id },
     });

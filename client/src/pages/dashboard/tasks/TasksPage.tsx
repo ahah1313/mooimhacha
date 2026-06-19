@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
-import {
-  todayStr,
-  nowTimeStr,
-  nowDateTimeStr,
-  timeMinForDate,
-} from "@/lib/dateUtils";
+import { todayStr, nowTimeStr, timeMinForDate } from "@/lib/dateUtils";
 import { useToast } from "@/hooks/useToast";
 import Modal from "@/components/Modal";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -120,9 +115,14 @@ export default function TasksPage() {
   const [editAssignee, setEditAssignee] = useState("");
   const [editDue, setEditDue] = useState("");
   const [editTime, setEditTime] = useState("");
-  const [editStatus, setEditStatus] = useState<Status>("할 일");
   const [editDifficulty, setEditDifficulty] = useState(2);
+  const [editReason, setEditReason] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+  const [pendingRequestBody, setPendingRequestBody] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [statusChangePending, setStatusChangePending] = useState<{
@@ -145,11 +145,6 @@ export default function TasksPage() {
   const [extensions, setExtensions] = useState<Map<number, TaskExtension>>(
     new Map(),
   );
-  // 연장 요청 모달
-  const [extTarget, setExtTarget] = useState<ActionItem | null>(null);
-  const [extDue, setExtDue] = useState("");
-  const [extReason, setExtReason] = useState("");
-  const [extSaving, setExtSaving] = useState(false);
   const [viewingExt, setViewingExt] = useState<TaskExtension | null>(null);
 
   // 팀의 연장 요청 로드 — 태스크별 최신 1건만 (list는 created_at DESC)
@@ -190,41 +185,6 @@ export default function TasksPage() {
     void loadExtensions();
   }, [load, loadExtensions]);
 
-  // 연장 요청 모달 열기 — 기본 희망 기한은 기존 기한 +3일
-  function openExtModal(t: ActionItem) {
-    setExtTarget(t);
-    setExtReason("");
-    const base = t.due_date ? new Date(t.due_date) : new Date();
-    base.setDate(base.getDate() + 3);
-    setExtDue(toLocalInput(base));
-  }
-
-  async function submitExtension() {
-    if (!extTarget) return;
-    if (!extDue) {
-      showToast("희망 기한을 선택해 주세요", "error");
-      return;
-    }
-    if (!extReason.trim()) {
-      showToast("연장 사유를 입력해 주세요", "error");
-      return;
-    }
-    setExtSaving(true);
-    try {
-      await apiPost(`/action-items/${extTarget.id}/extension`, {
-        requested_due_date: new Date(extDue).toISOString(),
-        reason: extReason.trim(),
-      });
-      setExtTarget(null);
-      await loadExtensions();
-      showToast("연장 요청을 보냈어요. 팀장 승인을 기다려 주세요");
-    } catch (e) {
-      showToast((e as Error).message, "error");
-    } finally {
-      setExtSaving(false);
-    }
-  }
-
   async function approveExt(extId: number) {
     try {
       await apiPost(`/extensions/${extId}/approve`);
@@ -259,11 +219,23 @@ export default function TasksPage() {
     };
 
     if (ext?.status === "pending") {
+      const parts: string[] = [];
+      if (ext.requested_description) parts.push("이름");
+      if (ext.requested_difficulty != null) parts.push("난이도");
+      if (ext.requested_assignee_id != null) parts.push("담당자");
+      if (ext.requested_due_date) parts.push("마감일");
       return (
         <div className="tc-ext" onClick={(e) => e.stopPropagation()}>
           <span className="tc-ext-label">
-            <i className="ti ti-clock-hour-4" /> 연장 요청 ~
-            {fmtD(ext.requested_due_date)}
+            <i className="ti ti-clock-hour-4" />
+            {parts.length > 0
+              ? parts.map((p) => (
+                  <span key={p} className="tc-ext-field-badge">
+                    {p}
+                  </span>
+                ))
+              : " 수정"}{" "}
+            변경 요청 중…
           </span>
           {isLeader ? (
             <span className="tc-ext-acts">
@@ -273,7 +245,7 @@ export default function TasksPage() {
                   e.stopPropagation();
                   setViewingExt(ext);
                 }}
-                title="연장 사유 보기"
+                title="수정 내용 및 사유 보기"
               >
                 <i className="ti ti-message-circle" /> 사유 확인
               </button>
@@ -296,20 +268,11 @@ export default function TasksPage() {
         </div>
       );
     }
-    if (overdue && isMine) {
+    if (ext?.status === "rejected" && (overdue || isMine)) {
       return (
-        <button
-          className="tc-ext-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            openExtModal(t);
-          }}
-        >
-          <i className="ti ti-calendar-plus" />
-          {ext?.status === "rejected"
-            ? "연장 거절됨 · 재요청"
-            : "기한 연장 요청"}
-        </button>
+        <span className="tc-ext-label" style={{ color: "var(--red)" }}>
+          <i className="ti ti-x" /> 수정 거절됨 · 카드를 눌러 재요청
+        </span>
       );
     }
     return null;
@@ -388,30 +351,74 @@ export default function TasksPage() {
       setEditDue("");
       setEditTime("");
     }
-    setEditStatus(API_TO_STATUS[task.status] ?? "할 일");
     setEditDifficulty(task.difficulty ?? 2);
+    setEditReason("");
   }
 
-  async function saveEdit() {
+  async function submitChangeRequest() {
     if (!editTarget || editSaving) return;
-    if (!editDesc.trim()) {
-      showToast("태스크 이름을 입력해 주세요", "error");
+
+    const body: Record<string, unknown> = {};
+    let hasChange = false;
+
+    if (editDesc.trim() !== editTarget.description) {
+      if (!editDesc.trim()) {
+        showToast("태스크 이름을 입력해 주세요", "error");
+        return;
+      }
+      body.requested_description = editDesc.trim();
+      hasChange = true;
+    }
+
+    const newDiff = editDifficulty;
+    if (newDiff !== (editTarget.difficulty ?? 2)) {
+      body.requested_difficulty = newDiff;
+      hasChange = true;
+    }
+
+    const newAssigneeId = editAssignee ? Number(editAssignee) : null;
+    if (newAssigneeId !== (editTarget.assignee_id ?? null)) {
+      body.requested_assignee_id = newAssigneeId === null ? -1 : newAssigneeId;
+      hasChange = true;
+    }
+
+    const newDue = editDue
+      ? new Date(`${editDue}T${editTime || "23:59"}`)
+      : null;
+    const origDue = editTarget.due_date ? new Date(editTarget.due_date) : null;
+    if ((newDue?.getTime() ?? null) !== (origDue?.getTime() ?? null)) {
+      if (newDue) body.requested_due_date = newDue.toISOString();
+      hasChange = true;
+    }
+
+    if (!hasChange) {
+      showToast("변경된 항목이 없습니다", "error");
       return;
     }
+    if (!editReason.trim()) {
+      showToast("수정 사유를 입력해 주세요", "error");
+      return;
+    }
+    body.reason = editReason.trim();
+
+    if (extensions.get(editTarget.id)?.status === "pending") {
+      setPendingRequestBody(body);
+      setConfirmOverwrite(true);
+      return;
+    }
+
+    await doSendRequest(editTarget.id, body);
+  }
+
+  async function doSendRequest(taskId: number, body: Record<string, unknown>) {
     setEditSaving(true);
     try {
-      await apiPatch(`/action-items/${editTarget.id}`, {
-        description: editDesc.trim(),
-        assignee_id: editAssignee ? Number(editAssignee) : null,
-        due_date: editDue
-          ? new Date(`${editDue}T${editTime || "23:59"}`).toISOString()
-          : undefined,
-        status: STATUS_TO_API[editStatus],
-        difficulty: editDifficulty,
-      });
+      await apiPost(`/action-items/${taskId}/extension`, body);
       setEditTarget(null);
-      showToast("태스크가 수정되었습니다");
-      await load();
+      setConfirmOverwrite(false);
+      setPendingRequestBody(null);
+      await loadExtensions();
+      showToast("수정 요청을 보냈어요. 팀장 승인을 기다려 주세요");
     } catch (e) {
       showToast((e as Error).message, "error");
     } finally {
@@ -1071,14 +1078,17 @@ export default function TasksPage() {
               </button>
               <button
                 className="btn btn-primary"
-                onClick={() => void saveEdit()}
+                onClick={() => void submitChangeRequest()}
                 disabled={editSaving}
               >
-                {editSaving ? "저장 중…" : "저장"}
+                {editSaving ? "요청 중…" : "수정 요청"}
               </button>
             </>
           }
         >
+          <div className="modal-sub">
+            팀장이 수락하면 변경 사항이 적용됩니다.
+          </div>
           <div className="field">
             <label className="field-label">태스크 이름</label>
             <input
@@ -1126,21 +1136,6 @@ export default function TasksPage() {
             </div>
           </div>
           <div className="field">
-            <label className="field-label">상태</label>
-            <div className="chip-row">
-              {(["할 일", "진행 중", "완료"] as Status[]).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`chip-opt ${STATUS_CHIP_CLS[s]} ${editStatus === s ? "active" : ""}`}
-                  onClick={() => setEditStatus(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="field">
             <label className="field-label">난이도</label>
             <div className="chip-row">
               {DIFF_CHIPS.map((c) => (
@@ -1155,7 +1150,40 @@ export default function TasksPage() {
               ))}
             </div>
           </div>
+          <div className="field">
+            <label className="field-label">수정 사유</label>
+            <textarea
+              className="input"
+              rows={3}
+              placeholder="예) 일정이 변경되어 마감일 조정이 필요합니다."
+              value={editReason}
+              onChange={(e) => setEditReason(e.target.value)}
+            />
+          </div>
         </Modal>
+      )}
+
+      {/* 기존 요청 덮어쓰기 확인 모달 */}
+      {confirmOverwrite && editTarget && pendingRequestBody && (
+        <ConfirmModal
+          title="기존 요청 덮어쓰기"
+          message={
+            <>
+              <strong>{editTarget.description}</strong>에 아직 처리되지 않은
+              수정 요청이 있습니다.
+              <br />새 요청으로 덮어쓸까요?
+            </>
+          }
+          confirmLabel="덮어쓰기"
+          busy={editSaving}
+          onConfirm={() =>
+            void doSendRequest(editTarget.id, pendingRequestBody)
+          }
+          onClose={() => {
+            setConfirmOverwrite(false);
+            setPendingRequestBody(null);
+          }}
+        />
       )}
 
       {/* 삭제 확인 모달 */}
@@ -1303,52 +1331,9 @@ export default function TasksPage() {
         </Modal>
       )}
 
-      {/* 기한 연장 요청 모달 */}
-      {extTarget && (
-        <Modal
-          title="기한 연장 요청"
-          onClose={() => setExtTarget(null)}
-          actions={
-            <>
-              <button className="btn" onClick={() => setExtTarget(null)}>
-                취소
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={() => void submitExtension()}
-                disabled={extSaving}
-              >
-                {extSaving ? "요청 중…" : "요청 보내기"}
-              </button>
-            </>
-          }
-        >
-          <div className="modal-sub">팀장이 수락하면 기한이 변경됩니다.</div>
-          <div className="field">
-            <label className="field-label">희망 기한</label>
-            <input
-              className="input"
-              type="datetime-local"
-              min={nowDateTimeStr()}
-              value={extDue}
-              onChange={(e) => setExtDue(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label className="field-label">사유</label>
-            <textarea
-              className="input"
-              rows={3}
-              placeholder="예) 추가 자료 조사가 더 필요합니다."
-              value={extReason}
-              onChange={(e) => setExtReason(e.target.value)}
-            />
-          </div>
-        </Modal>
-      )}
       {viewingExt && (
         <Modal
-          title="연장 요청 사유"
+          title="수정 요청 내용"
           onClose={() => setViewingExt(null)}
           actions={
             <button className="btn" onClick={() => setViewingExt(null)}>
@@ -1356,27 +1341,103 @@ export default function TasksPage() {
             </button>
           }
         >
-          <div className="modal-sub">
-            {viewingExt.requester_name}님의 요청 · {viewingExt.task_description}
+          {/* 요청자 + 태스크 헤더 */}
+          <div className="ext-req-header">
+            <div className="ext-req-who">
+              <i className="ti ti-user-circle" />
+              <strong>{viewingExt.requester_name}</strong>님의 수정 요청
+            </div>
+            <div className="ext-req-task">{viewingExt.task_description}</div>
           </div>
-          <div className="field">
-            <label className="field-label">희망 기한</label>
-            <div className="input" style={{ background: "var(--bg-soft)" }}>
-              {new Date(viewingExt.requested_due_date).toLocaleString(
-                "ko-KR",
+
+          {/* 변경 항목 diff */}
+          {(viewingExt.requested_description ||
+            viewingExt.requested_difficulty != null ||
+            viewingExt.requested_assignee_id != null ||
+            viewingExt.requested_due_date) && (
+            <div className="ext-changes">
+              <div className="ext-changes-title">변경 내용</div>
+              {viewingExt.requested_description && (
+                <div className="ext-diff-row">
+                  <span className="ext-diff-label">이름</span>
+                  <div className="ext-diff-val">
+                    <span className="ext-diff-before">
+                      {viewingExt.task_description}
+                    </span>
+                    <i className="ti ti-arrow-right ext-diff-arrow" />
+                    <span className="ext-diff-after">
+                      {viewingExt.requested_description}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {viewingExt.requested_difficulty != null && (
+                <div className="ext-diff-row">
+                  <span className="ext-diff-label">난이도</span>
+                  <div className="ext-diff-val">
+                    <span className="ext-diff-before">
+                      {"★".repeat(viewingExt.current_difficulty ?? 1)}
+                    </span>
+                    <i className="ti ti-arrow-right ext-diff-arrow" />
+                    <span className="ext-diff-after">
+                      {"★".repeat(viewingExt.requested_difficulty)}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {viewingExt.requested_assignee_id != null && (
+                <div className="ext-diff-row">
+                  <span className="ext-diff-label">담당자</span>
+                  <div className="ext-diff-val">
+                    <span className="ext-diff-before">
+                      {viewingExt.current_assignee_id != null
+                        ? (members.find(
+                            (m) => m.user_id === viewingExt.current_assignee_id,
+                          )?.name ?? "알 수 없음")
+                        : "미지정"}
+                    </span>
+                    <i className="ti ti-arrow-right ext-diff-arrow" />
+                    <span className="ext-diff-after">
+                      {viewingExt.requested_assignee_id === -1
+                        ? "미지정"
+                        : (members.find(
+                            (m) =>
+                              m.user_id === viewingExt.requested_assignee_id,
+                          )?.name ?? "알 수 없음")}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {viewingExt.requested_due_date && (
+                <div className="ext-diff-row">
+                  <span className="ext-diff-label">마감일</span>
+                  <div className="ext-diff-val">
+                    <span className="ext-diff-before">
+                      {viewingExt.current_due_date
+                        ? new Date(
+                            viewingExt.current_due_date,
+                          ).toLocaleDateString("ko-KR")
+                        : "없음"}
+                    </span>
+                    <i className="ti ti-arrow-right ext-diff-arrow" />
+                    <span className="ext-diff-after">
+                      {new Date(
+                        viewingExt.requested_due_date,
+                      ).toLocaleDateString("ko-KR")}
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-          <div className="field">
-            <label className="field-label">사유</label>
-            <div
-              className="input"
-              style={{
-                background: "var(--bg-soft)",
-                minHeight: 72,
-                whiteSpace: "pre-wrap",
-              }}
-            >
+          )}
+
+          {/* 수정 사유 */}
+          <div className="ext-reason-box">
+            <div className="ext-reason-label">
+              <i className="ti ti-message-circle" />
+              수정 사유
+            </div>
+            <div className="ext-reason-body">
               {viewingExt.reason || "(작성된 사유가 없습니다)"}
             </div>
           </div>
