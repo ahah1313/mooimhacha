@@ -1378,6 +1378,122 @@
   font-weight: 700;
   color: var(--amber, #b8860b);
 }
+.tc-ext-field-badge {
+  display: inline-block;
+  background: var(--amber, #b8860b);
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 3px;
+}
+/* 수정 요청 모달 */
+.ext-req-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.ext-req-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-main);
+}
+.ext-req-who i {
+  font-size: 16px;
+  color: var(--text-soft);
+}
+.ext-req-task {
+  font-size: 12px;
+  color: var(--text-soft);
+  padding-left: 22px;
+}
+.ext-changes {
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.ext-changes-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-soft);
+  padding: 7px 12px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-2);
+}
+.ext-diff-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 10px;
+}
+.ext-diff-row + .ext-diff-row {
+  border-top: 1px solid var(--border-2);
+}
+.ext-diff-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-soft);
+  min-width: 44px;
+  flex-shrink: 0;
+}
+.ext-diff-val {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.ext-diff-before {
+  color: var(--text-soft);
+  text-decoration: line-through;
+  text-decoration-color: var(--border-2);
+}
+.ext-diff-arrow {
+  color: var(--text-mut);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.ext-diff-after {
+  color: var(--text-main);
+  font-weight: 600;
+}
+.ext-reason-box {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.ext-reason-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-soft);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.ext-reason-label i {
+  font-size: 13px;
+}
+.ext-reason-body {
+  font-size: 13px;
+  color: var(--text-main);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
 .tc-ext-acts {
   display: inline-flex;
   gap: 4px;

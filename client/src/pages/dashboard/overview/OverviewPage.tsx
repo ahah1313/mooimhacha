@@ -74,7 +74,9 @@ function meetingDateLabel(m: Meeting): string {
     hour: "numeric",
     minute: "2-digit",
   });
-  return sameDay ? `오늘 ${time}` : `${d.getMonth() + 1}월 ${d.getDate()}일 ${time}`;
+  return sameDay
+    ? `오늘 ${time}`
+    : `${d.getMonth() + 1}월 ${d.getDate()}일 ${time}`;
 }
 
 export default function OverviewPage() {
@@ -93,7 +95,7 @@ export default function OverviewPage() {
       apiGet<{ members: TeamContribution[] }>(
         `/teams/${team.id}/contributions`,
       ),
-      apiGet<ActionItem[]>(`/action-items?team_id=${team.id}`),
+      apiGet<ActionItem[]>(`/action-items?team_id=${team.id}&confirmed=true`),
     ]).then(([ms, cs, ts]) => {
       if (!alive) return;
       if (ms.status === "fulfilled") setMeetings(ms.value);
@@ -205,10 +207,14 @@ export default function OverviewPage() {
       {derived.urgent.length > 0 ? (
         <div className="alert-bar">
           <i className="ti ti-alert-triangle" />{" "}
-          {derived.nameById.get(derived.urgent[0].assignee_id ?? -1) ??
-            "담당자 미지정"}
-          님의 태스크 {derived.urgent.length}개가 곧 마감입니다. 아직 시작하지
-          않았어요.
+          {(() => {
+            const name = derived.nameById.get(
+              derived.urgent[0].assignee_id ?? -1,
+            );
+            return name
+              ? `${name}님의 태스크 ${derived.urgent.length}개가 곧 마감입니다. 아직 시작하지 않았어요.`
+              : `곧 마감인 태스크가 ${derived.urgent.length}개 있습니다. 아직 시작하지 않았어요.`;
+          })()}
         </div>
       ) : null}
 
@@ -335,20 +341,36 @@ export default function OverviewPage() {
               ? `${meetingDateLabel(focusMeeting)} · ${focusMeeting.total_minutes}분 · ${focusMeeting.meeting_type === "regular" ? "전체 회의" : "부분 회의"}`
               : "회의 관리에서 새 회의를 만들어 보세요."}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 4px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              margin: "14px 0 4px",
+            }}
+          >
             <div style={{ display: "flex" }}>
               {(team?.members ?? []).slice(0, 5).map((m, i) => (
                 <div
                   key={i}
                   className={`av a${(i % 4) + 1} av-sm`}
                   title={m.name}
-                  style={{ marginLeft: i === 0 ? 0 : -8, boxShadow: "0 0 0 2px var(--surface)" }}
+                  style={{
+                    marginLeft: i === 0 ? 0 : -8,
+                    boxShadow: "0 0 0 2px var(--surface)",
+                  }}
                 >
                   {m.name[0]}
                 </div>
               ))}
             </div>
-            <span style={{ fontSize: 11.5, color: "var(--text-soft)", fontWeight: 600 }}>
+            <span
+              style={{
+                fontSize: 11.5,
+                color: "var(--text-soft)",
+                fontWeight: 600,
+              }}
+            >
               {team?.member_count ?? 0}명 참여
             </span>
           </div>

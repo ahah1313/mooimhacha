@@ -22,8 +22,18 @@ export class TaskExtensionRequest {
   @Column({ type: 'bigint', unsigned: true })
   requester_id!: number;
 
-  @Column({ type: 'datetime' })
-  requested_due_date!: Date;
+  @Column({ type: 'datetime', nullable: true })
+  requested_due_date!: Date | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  requested_description!: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  requested_difficulty!: number | null;
+
+  // null = 변경 없음, -1 = 담당자 해제, 양수 = 새 담당자 user_id
+  @Column({ type: 'bigint', nullable: true })
+  requested_assignee_id!: number | null;
 
   @Column({ type: 'text' })
   reason!: string;
