@@ -272,22 +272,31 @@ export default function MeetingPage() {
 
   async function saveMeetingSettings() {
     if (!selectedId || editSaving) return;
-    if (!editDate || !editTime) {
-      showToast("날짜와 시간을 입력해 주세요", "error");
-      return;
-    }
-    if (new Date(`${editDate}T${editTime}:00`) <= new Date()) {
-      showToast("현재 시각 이후로 설정해 주세요", "error");
-      return;
+    if (selected?.status === "scheduled") {
+      if (!editDate || !editTime) {
+        showToast("날짜와 시간을 입력해 주세요", "error");
+        return;
+      }
+      if (new Date(`${editDate}T${editTime}:00`) <= new Date()) {
+        showToast("현재 시각 이후로 설정해 주세요", "error");
+        return;
+      }
     }
     setEditSaving(true);
     try {
-      await apiPatch(`/meetings/${selectedId}`, {
+      const patch: Record<string, unknown> = {
         topic: editTopic.trim() || undefined,
-        scheduled_at: new Date(`${editDate}T${editTime}:00`).toISOString(),
-        total_minutes: editMinutes || undefined,
-        meeting_type: editMeetingType,
-      });
+      };
+      if (selected?.status !== "ended") {
+        patch.meeting_type = editMeetingType;
+      }
+      if (selected?.status === "scheduled") {
+        patch.scheduled_at = new Date(
+          `${editDate}T${editTime}:00`,
+        ).toISOString();
+        patch.total_minutes = editMinutes || undefined;
+      }
+      await apiPatch(`/meetings/${selectedId}`, patch);
       await loadMeetings();
       showToast("회의 정보가 수정되었습니다.");
     } catch (e) {
@@ -1814,7 +1823,7 @@ export default function MeetingPage() {
                           type="date"
                           min={todayStr()}
                           value={editDate}
-                          disabled={selected.status === "ended"}
+                          disabled={selected.status !== "scheduled"}
                           onChange={(e) => setEditDate(e.target.value)}
                         />
                       </div>
@@ -1825,7 +1834,7 @@ export default function MeetingPage() {
                           type="time"
                           min={timeMinForDate(editDate)}
                           value={editTime}
-                          disabled={selected.status === "ended"}
+                          disabled={selected.status !== "scheduled"}
                           onChange={(e) => setEditTime(e.target.value)}
                         />
                       </div>
@@ -1838,7 +1847,7 @@ export default function MeetingPage() {
                         min={5}
                         step={5}
                         value={editMinutes}
-                        disabled={selected.status === "ended"}
+                        disabled={selected.status !== "scheduled"}
                         onChange={(e) =>
                           setEditMinutes(
                             e.target.value === "" ? "" : Number(e.target.value),
@@ -1846,6 +1855,12 @@ export default function MeetingPage() {
                         }
                       />
                     </div>
+                    {selected.status === "active" && (
+                      <div className="summary-box" style={{ marginBottom: 8 }}>
+                        <i className="ti ti-info-circle" />
+                        진행 중인 회의는 이름과 회의 유형만 수정할 수 있습니다.
+                      </div>
+                    )}
                     {selected.status === "ended" && (
                       <div className="summary-box" style={{ marginBottom: 8 }}>
                         <i className="ti ti-info-circle" />
