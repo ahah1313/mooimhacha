@@ -132,7 +132,7 @@
 
 | #   | 이름             | 범위         | 산출                                            | 엔드포인트                            |
 | --- | ---------------- | ------------ | ----------------------------------------------- | ------------------------------------- |
-| ①   | 회의 기여도      | user×meeting | 발언×0.6 + 참석×0.4 (저장값)                    | `GET /api/meetings/:id/contributions` |
+| ①   | 회의 기여도      | user×meeting | 발언×0.6 + 참석×0.4 (기본, 팀 설정 조정 가능; 저장값) | `GET /api/meetings/:id/contributions` |
 | ②   | 회의 종합 기여도 | user×team    | Σ(meeting_score×회의시간)/Σ(회의시간)           | `GET /api/teams/:id/contributions`    |
 | ③   | 테스크 기여도    | user×team    | (완료율+마감준수)/2 — `action_items`에서 라이브 | `GET /api/teams/:id/contributions`    |
 | ④   | 종합 기여도      | user×team    | min(1.0, (③×w + ②×(1−w)) × (1+n))               | `GET /api/teams/:id/contributions`    |
