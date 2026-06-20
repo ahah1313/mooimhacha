@@ -2301,6 +2301,7 @@ export default function MeetingPage() {
               placeholder="회의에서 결정된 내용을 입력하세요"
               value={decInput}
               onChange={(e) => setDecInput(e.target.value)}
+              autoFocus
             />
           </div>
         </Modal>
