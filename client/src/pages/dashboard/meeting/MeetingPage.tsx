@@ -142,6 +142,7 @@ export default function MeetingPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [pendingTasks, setPendingTasks] = useState<ActionItem[]>([]);
   const [members, setMembers] = useState<TeamContribution[]>([]);
+  const [prevDecisions, setPrevDecisions] = useState<Decision[]>([]);
 
   // AI 태스크 확정 모달
   const [confirmTask, setConfirmTask] = useState<ActionItem | null>(null);
@@ -198,6 +199,28 @@ export default function MeetingPage() {
   const [agMinutes, setAgMinutes] = useState<number | "">(10);
 
   const selected = meetings.find((m) => m.id === selectedId) ?? null;
+
+  // 가장 최근에 종료된 회의 (선택 회의 제외)
+  const prevMeeting = useMemo(() => {
+    if (!selected) return null;
+    return (
+      [...meetings]
+        .filter((m) => m.status === "ended" && m.id !== selected.id)
+        .sort((a, b) => {
+          const ta = a.ended_at ?? a.scheduled_at;
+          const tb = b.ended_at ?? b.scheduled_at;
+          return new Date(tb).getTime() - new Date(ta).getTime();
+        })[0] ?? null
+    );
+  }, [meetings, selected]);
+
+  useEffect(() => {
+    setPrevDecisions([]);
+    if (!prevMeeting || selected?.status === "ended") return;
+    apiGet<Decision[]>(`/decisions?meeting_id=${prevMeeting.id}`)
+      .then(setPrevDecisions)
+      .catch(() => {});
+  }, [prevMeeting?.id, selected?.status]);
 
   const loadMeetings = useCallback(async () => {
     if (!team) return;
@@ -1207,6 +1230,42 @@ export default function MeetingPage() {
                 {/* 아젠다 */}
                 {tab === "agenda" && (
                   <div className="tab-panel active">
+                    {prevDecisions.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div
+                          className="panel-label"
+                          style={{ marginBottom: 6 }}
+                        >
+                          저번 회의 결정 사항
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 400,
+                              color: "var(--text-soft)",
+                              marginLeft: 6,
+                              textTransform: "none",
+                              letterSpacing: 0,
+                            }}
+                          >
+                            {`<${prevMeeting?.topic}>` ?? "이전 회의"}
+                          </span>
+                        </div>
+                        {prevDecisions.map((d) => (
+                          <div key={d.id} className="dec-item">
+                            <div className="dec-ic">
+                              <i className="ti ti-check" />
+                            </div>
+                            <div className="dec-text">{d.content}</div>
+                          </div>
+                        ))}
+                        <div
+                          style={{
+                            borderTop: "1px solid var(--border)",
+                            margin: "12px 0 10px",
+                          }}
+                        />
+                      </div>
+                    )}
                     <div className="panel-label">아젠다 진행</div>
                     {agendas.length === 0 && (
                       <div
