@@ -9,7 +9,6 @@ import ProfileEditModal from "@/components/ProfileEditModal";
 import type {
   ActionItem,
   Meeting,
-  Notification,
   TeamContribution,
   TaskExtension,
   PendingConsent,
@@ -84,13 +83,6 @@ function dueInfo(due: string | null): { text: string; cls: string } | null {
   return { text: `${m}/${day}(${dow}) ${ampm} ${h12}:${min} ${dDay}`, cls };
 }
 
-// 알림 종류 → 아이콘/색
-const NOTI_STYLE: Record<string, { icon: string; color: string }> = {
-  meeting_soon: { icon: "ti ti-clock", color: "var(--amber)" },
-  action_assigned: { icon: "ti ti-checklist", color: "var(--blue)" },
-  meeting_confirmed: { icon: "ti ti-video", color: "var(--green)" },
-};
-
 export default function HomePage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -100,7 +92,6 @@ export default function HomePage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [tasks, setTasks] = useState<MyTask[]>([]);
   const [meetings, setMeetings] = useState<UpcomingMeeting[]>([]);
-  const [notis, setNotis] = useState<Notification[]>([]);
   // 그룹 카드의 '내 기여도' (team_id → 0~100 또는 null)
   const [myContrib, setMyContrib] = useState<Map<number, number | null>>(
     new Map(),
@@ -108,10 +99,8 @@ export default function HomePage() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [joinCode, setJoinCode] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notiOpen, setNotiOpen] = useState(false);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-  const notiRef = useRef<HTMLDivElement>(null);
 
   const fetchTeams = () => {
     apiFetch<{ teams: Team[] }>("/api/teams", { headers: authHeader() })
@@ -121,9 +110,6 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchTeams();
-    apiGet<Notification[]>("/notifications")
-      .then(setNotis)
-      .catch(() => {});
   }, []);
 
   // 팀 목록이 잡히면 팀별 데이터(내 태스크·예정 회의·내 기여도)를 모아온다
@@ -261,8 +247,6 @@ export default function HomePage() {
     function handleClickOutside(e: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node))
         setProfileOpen(false);
-      if (notiRef.current && !notiRef.current.contains(e.target as Node))
-        setNotiOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -307,22 +291,6 @@ export default function HomePage() {
     }
   }
 
-  async function readNotification(n: Notification) {
-    if (n.read) return;
-    setNotis((prev) =>
-      prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)),
-    );
-    try {
-      await apiPatch(`/notifications/${n.id}/read`);
-    } catch {
-      // 읽음 처리 실패는 치명적이지 않음 — 다음 로드에서 동기화
-    }
-  }
-
-  const visibleNotis = notis.filter((n) => n.type !== "meeting_soon");
-  const unreadCount = visibleNotis.filter((n) => !n.read).length;
-  const alertCount = todos.length + unreadCount;
-
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* 상단 네비 */}
@@ -337,109 +305,6 @@ export default function HomePage() {
           >
             <i className="ti ti-plus" /> 새 그룹
           </button>
-          <div className="noti-wrap" ref={notiRef}>
-            <button className="tn-icon" onClick={() => setNotiOpen((v) => !v)}>
-              {alertCount > 0 && <span className="dot" />}
-              <i className="ti ti-bell" />
-            </button>
-            {notiOpen && (
-              <div className="noti-dropdown">
-                <div className="nd-head">
-                  알림
-                  {alertCount > 0 && (
-                    <span className="nd-badge">{alertCount}</span>
-                  )}
-                </div>
-                <div className="nd-divider" />
-                {todos.length > 0 && (
-                  <>
-                    {todos.map((item, i) => (
-                      <div
-                        key={i}
-                        className="nd-item"
-                        style={{ cursor: "pointer" }}
-                        onClick={() => {
-                          setNotiOpen(false);
-                          navigate(
-                            `/dashboard/${item.team_id}/${item.type === "extension" ? "tasks" : "meeting"}`,
-                          );
-                        }}
-                      >
-                        <div
-                          className="nd-icon"
-                          style={{
-                            background:
-                              item.type === "extension"
-                                ? "var(--amber)22"
-                                : "var(--blue)22",
-                            color:
-                              item.type === "extension"
-                                ? "var(--amber)"
-                                : "var(--blue)",
-                          }}
-                        >
-                          <i
-                            className={
-                              item.type === "extension"
-                                ? "ti ti-clock-edit"
-                                : "ti ti-user-check"
-                            }
-                          />
-                        </div>
-                        <div className="nd-body">
-                          <div className="nd-text">{item.label}</div>
-                          <div className="nd-time">
-                            {item.team_name} ·{" "}
-                            {item.type === "extension"
-                              ? "기한 연장 요청"
-                              : "결석 사유 동의"}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="nd-divider" />
-                  </>
-                )}
-                {visibleNotis.length === 0 && todos.length === 0 && (
-                  <div
-                    style={{
-                      padding: "16px 14px",
-                      fontSize: 12.5,
-                      color: "var(--text-soft)",
-                    }}
-                  >
-                    새 알림이 없습니다.
-                  </div>
-                )}
-                {visibleNotis.slice(0, 8).map((n) => {
-                  const st = NOTI_STYLE[n.type] ?? {
-                    icon: "ti ti-bell",
-                    color: "var(--text-soft)",
-                  };
-                  return (
-                    <div
-                      key={n.id}
-                      className={`nd-item ${!n.read ? "unread" : ""}`}
-                      onClick={() => void readNotification(n)}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <div
-                        className="nd-icon"
-                        style={{ background: st.color + "22", color: st.color }}
-                      >
-                        <i className={st.icon} />
-                      </div>
-                      <div className="nd-body">
-                        <div className="nd-text">{n.title}</div>
-                        <div className="nd-time">{relTime(n.created_at)}</div>
-                      </div>
-                      {!n.read && <div className="nd-dot" />}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
           <div className="profile-wrap" ref={profileRef}>
             <div
               className="av a1 av-md"
