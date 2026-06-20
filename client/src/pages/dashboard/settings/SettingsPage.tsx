@@ -558,66 +558,6 @@ export default function SettingsPage() {
             </div>
 
             {isLeader && (
-              <>
-                <hr
-                  style={{
-                    border: "none",
-                    borderTop: "1px solid var(--border)",
-                    margin: "4px 0",
-                  }}
-                />
-                <div className="field">
-                  <label className="field-label">Slack 워크스페이스</label>
-                  {settings.slack_bot_token ? (
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 10 }}
-                    >
-                      <span style={{ fontSize: 13, color: "var(--green)" }}>
-                        <i className="ti ti-check" /> 연결됨
-                      </span>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={disconnectSlack}
-                      >
-                        연결 해제
-                      </button>
-                    </div>
-                  ) : (
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        void addToSlack();
-                      }}
-                    >
-                      <img
-                        alt="Add to Slack"
-                        height="40"
-                        width="139"
-                        src="https://platform.slack-edge.com/img/add_to_slack.png"
-                        srcSet="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x"
-                      />
-                    </a>
-                  )}
-                </div>
-                <div className="field">
-                  <label className="field-label">Slack Channel ID</label>
-                  <input
-                    className="input"
-                    placeholder="C0123456789"
-                    value={settings.slack_channel_id ?? ""}
-                    onChange={(e) =>
-                      setSettings(
-                        (s) => s && { ...s, slack_channel_id: e.target.value },
-                      )
-                    }
-                    maxLength={32}
-                  />
-                </div>
-              </>
-            )}
-
-            {isLeader && (
               <button
                 className="btn btn-primary"
                 style={{ alignSelf: "flex-end" }}
@@ -642,24 +582,108 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* Slack 개인 알림 연동 */}
+      {/* Slack 알림 연동 */}
       <Card icon="ti ti-brand-slack" title="Slack 알림 연동">
         <div
           style={{
             padding: "8px 16px 16px",
             display: "flex",
             flexDirection: "column",
-            gap: 12,
+            gap: 14,
           }}
         >
-          <p style={{ fontSize: 12.5, color: "var(--text-soft)", margin: 0 }}>
-            Slack DM 알림(마감 하루 전·변경 승인)을 받으려면 내 Slack User ID를
-            입력하세요.
-            <br />
-            Slack 앱 → 프로필 → 더보기 → Member ID 복사
-          </p>
+          {isLeader && (
+            <>
+              <div className="field">
+                <label className="field-label">워크스페이스 연결</label>
+                {settings.slack_bot_token ? (
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <span style={{ fontSize: 13, color: "var(--green)" }}>
+                      <i className="ti ti-check" /> 연결됨
+                    </span>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={disconnectSlack}
+                    >
+                      연결 해제
+                    </button>
+                  </div>
+                ) : (
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void addToSlack();
+                    }}
+                  >
+                    <img
+                      alt="Add to Slack"
+                      height="40"
+                      width="139"
+                      src="https://platform.slack-edge.com/img/add_to_slack.png"
+                      srcSet="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x"
+                    />
+                  </a>
+                )}
+              </div>
+              <div className="field">
+                <label className="field-label">Slack Channel ID</label>
+                <input
+                  className="input"
+                  placeholder="C0123456789"
+                  value={settings.slack_channel_id ?? ""}
+                  onChange={(e) =>
+                    setSettings(
+                      (s) => s && { ...s, slack_channel_id: e.target.value },
+                    )
+                  }
+                  maxLength={32}
+                />
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    fontSize: 12,
+                    color: "var(--text-soft)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  채널 우클릭 → 채널 세부정보 → 채널 세부정보 보기 → 맨 아래
+                  채널 ID 복사
+                </p>
+              </div>
+              <button
+                className="btn btn-primary"
+                style={{ alignSelf: "flex-end" }}
+                onClick={saveSettings}
+                disabled={saving}
+              >
+                저장
+              </button>
+              <hr
+                style={{
+                  border: "none",
+                  borderTop: "1px solid var(--border)",
+                  margin: "4px 0",
+                }}
+              />
+            </>
+          )}
           <div className="field">
             <label className="field-label">내 Slack User ID</label>
+            <p
+              style={{
+                margin: "0 0 8px",
+                fontSize: 12,
+                color: "var(--text-soft)",
+                lineHeight: 1.5,
+              }}
+            >
+              DM 알림(마감 하루 전·사유 승인)을 받으려면 입력하세요.
+              <br />
+              Slack 앱 → 프로필 → 더보기 → Member ID 복사
+            </p>
             <input
               className="input"
               placeholder="U0123456789"
