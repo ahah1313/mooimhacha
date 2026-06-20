@@ -1221,13 +1221,15 @@ export default function MeetingPage() {
                       onClick={() => setTab(t)}
                     >
                       {
-                        {
-                          agenda: "아젠다",
-                          speak: "발언 기록",
-                          attendance: "출결",
-                          decision: "결정 사항",
-                          summary: "회의 요약",
-                        }[t]
+                        (
+                          {
+                            agenda: "아젠다",
+                            speak: "발언 기록",
+                            attendance: "출결",
+                            decision: "결정 사항",
+                            summary: "회의 요약",
+                          } as Record<string, string>
+                        )[t]
                       }
                     </div>
                   ))}
