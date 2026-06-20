@@ -123,11 +123,17 @@ export default function MeetingPage() {
   const [decInput, setDecInput] = useState("");
   // 세 모달을 하나의 state로 관리. null이면 모두 닫힘.
   const [modalOpen, setModalOpen] = useState<
-    "meeting" | "decision" | "agenda" | "absence" | "headset" | "quickstart" | null
+    | "meeting"
+    | "decision"
+    | "agenda"
+    | "absence"
+    | "headset"
+    | "quickstart"
+    | null
   >(null);
-  const [headsetAction, setHeadsetAction] = useState<"start" | "attend" | "quickstart">(
-    "start",
-  );
+  const [headsetAction, setHeadsetAction] = useState<
+    "start" | "attend" | "quickstart"
+  >("start");
   // 결정 수정/삭제 대상 — 수정은 결정 모달을 재사용, 삭제는 확인 모달을 띄운다.
   const [editingDecision, setEditingDecision] = useState<Decision | null>(null);
   const [deletingDecision, setDeletingDecision] = useState<Decision | null>(
@@ -177,17 +183,15 @@ export default function MeetingPage() {
   const [newAgendaInput, setNewAgendaInput] = useState("");
   const [newAgendaMinutes, setNewAgendaMinutes] = useState<number | "">("");
   const [quickTopic, setQuickTopic] = useState("");
-  const [quickMeetingType, setQuickMeetingType] = useState<"regular" | "partial">(
-    "regular",
-  );
+  const [quickMeetingType, setQuickMeetingType] = useState<
+    "regular" | "partial"
+  >("regular");
   const [quickMinutes, setQuickMinutes] = useState<number | "">(30);
   const [quickAgendaList, setQuickAgendaList] = useState<
     { title: string; minutes: number | "" }[]
   >([]);
   const [quickAgendaInput, setQuickAgendaInput] = useState("");
-  const [quickAgendaMinutes, setQuickAgendaMinutes] = useState<number | "">(
-    "",
-  );
+  const [quickAgendaMinutes, setQuickAgendaMinutes] = useState<number | "">("");
   const [quickStarting, setQuickStarting] = useState(false);
 
   // 아젠다 모달 입력값
@@ -1482,7 +1486,9 @@ export default function MeetingPage() {
                           const badge = ATT_BADGE[mem.status];
                           const isMe = me?.id === mem.user_id;
                           const showSub =
-                            mem.status === "absent" || mem.status === "excused";
+                            mem.status === "absent" ||
+                            mem.status === "excused" ||
+                            mem.status === "late";
                           return (
                             <div key={mem.user_id} className="att-item">
                               {/* 메인 행: 아바타 · 이름 · 배지 */}
@@ -1506,7 +1512,7 @@ export default function MeetingPage() {
                                     ` +${mem.late_minutes}분 후 입장`}
                                 </span>
                               </div>
-                              {/* 서브 행: 사유 + 액션 (결석·출석인정만) */}
+                              {/* 서브 행: 사유 + 액션 (결석·지각·출석인정) */}
                               {showSub && (
                                 <div className="att-sub">
                                   <span

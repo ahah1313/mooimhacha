@@ -197,9 +197,17 @@ export class MeetingAbsencesService {
     if (meeting.is_invalidated) {
       throw new BadRequestException('무효 처리된 회의입니다.');
     }
-    if (await this.didAttend(meetingId, userId)) {
+    const presenceEvents = await this.presenceRepo.find({
+      where: [
+        { meeting_id: meetingId, user_id: userId, event_type: 'join' },
+        { meeting_id: meetingId, user_id: userId, event_type: 'reconnect' },
+      ],
+    });
+    const hasJoined = presenceEvents.length > 0;
+    const isLate = this.isLateByPresence(meeting, presenceEvents, userId);
+    if (hasJoined && !isLate) {
       throw new BadRequestException(
-        '결석한 회의에만 사유를 입력할 수 있습니다.',
+        '결석 또는 지각한 경우에만 사유를 입력할 수 있습니다.',
       );
     }
 
@@ -373,16 +381,6 @@ export class MeetingAbsencesService {
       }
     }
     return set;
-  }
-
-  private async didAttend(meetingId: number, userId: number): Promise<boolean> {
-    const join = await this.presenceRepo.findOne({
-      where: [
-        { meeting_id: meetingId, user_id: userId, event_type: 'join' },
-        { meeting_id: meetingId, user_id: userId, event_type: 'reconnect' },
-      ],
-    });
-    return !!join;
   }
 
   // 실제 입장 시각 (ISO string) — t0 + 첫 입장 오프셋

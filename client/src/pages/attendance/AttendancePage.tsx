@@ -116,9 +116,13 @@ export default function AttendancePage() {
                 <p className="att-late-note">{m.late_minutes}분 지각</p>
               )}
 
-              {(m.status === "absent" || m.status === "excused") && (
+              {(m.status === "absent" ||
+                m.status === "excused" ||
+                m.status === "late") && (
                 <div className="att-absence">
-                  <p className="att-absence__label">결석 사유</p>
+                  <p className="att-absence__label">
+                    {m.status === "late" ? "지각 사유" : "결석 사유"}
+                  </p>
                   {absence?.reason ? (
                     <p className="att-absence__reason">{absence.reason}</p>
                   ) : (
