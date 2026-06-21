@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   useOutletContext,
   useNavigate,
@@ -27,6 +27,7 @@ interface Settings {
   absent_meeting_handling: "exclude" | "zero" | "attendance_only";
   deadline_penalty_curve: "standard" | "lenient" | "strict";
   min_meeting_minutes: number;
+  late_threshold_minutes: number;
   punctuality_grace_ratio: number;
   leader_bonus_multiplier: number;
   final_task_weight: number;
@@ -45,10 +46,24 @@ export default function SettingsPage() {
 
   const [detail, setDetail] = useState<TeamDetail | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
+  // 기여도 종합 가중치(%) — 발언/출석/태스크 (합 100). 저장 시 기존 필드로 환산.
+  const [weightPct, setWeightPct] = useState({
+    speech: 30,
+    attend: 20,
+    task: 50,
+  });
+  const weightRef = useRef(weightPct);
+  weightRef.current = weightPct;
+  const barRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<null | "h1" | "h2">(null);
+  const [dragging, setDragging] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [courseName, setCourseName] = useState("");
   const [inviteCopied, setInviteCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 숫자 입력 편집 중 임시 문자열 — 빈 값·소수점 중간 입력을 허용하기 위함
+  const [numDraft, setNumDraft] = useState<Record<string, string>>({});
+  const [showPenaltyInfo, setShowPenaltyInfo] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -141,7 +156,19 @@ export default function SettingsPage() {
     apiFetch<Settings>(`/api/teams/${team.id}/settings`, {
       headers: authHeader(),
     })
-      .then(setSettings)
+      .then((s) => {
+        setSettings(s);
+        const t = Number(s.final_task_weight);
+        const ws = Number(s.weight_speech_in_meeting);
+        const wa = Number(s.weight_attend_in_meeting);
+        const speech = Math.round((1 - t) * ws * 100);
+        const attend = Math.round((1 - t) * wa * 100);
+        setWeightPct({
+          speech,
+          attend,
+          task: Math.max(0, 100 - speech - attend),
+        });
+      })
       .catch(() => {});
   }, [team]);
 
@@ -186,6 +213,60 @@ export default function SettingsPage() {
     }
   }
 
+  // 발언/출석/태스크 %(합 100)를 기존 저장 모델(final_task_weight·weight_speech/attend)로 환산.
+  function applyWeights(speech: number, attend: number, task: number) {
+    const next = {
+      speech: Math.round(speech),
+      attend: Math.round(attend),
+      task: Math.round(task),
+    };
+    setWeightPct(next);
+    weightRef.current = next;
+    const sum = next.speech + next.attend + next.task;
+    const t = sum > 0 ? next.task / sum : 0;
+    const sa = next.speech + next.attend;
+    const ws = Math.round((sa > 0 ? next.speech / sa : 0.5) * 100) / 100;
+    setSettings(
+      (s) =>
+        s && {
+          ...s,
+          final_task_weight: Math.round(t * 100) / 100,
+          weight_speech_in_meeting: ws,
+          weight_attend_in_meeting: Math.round((1 - ws) * 100) / 100,
+        },
+    );
+  }
+
+  // 막대 경계 핸들(h1: 발언|출석, h2: 출석|태스크)을 위치(%)로 이동. 합 100 유지.
+  function moveHandleTo(which: "h1" | "h2", pct: number) {
+    const MIN = 10; // 각 구간 최소 비율(%)
+    const w = weightRef.current;
+    let p1 = w.speech;
+    let p2 = w.speech + w.attend;
+    const rounded = Math.round(pct);
+    if (which === "h1") {
+      // 발언·출석 ≥ MIN → p1 ∈ [MIN, p2 - MIN]
+      p1 = Math.max(MIN, Math.min(rounded, p2 - MIN));
+    } else {
+      // 출석·태스크 ≥ MIN → p2 ∈ [p1 + MIN, 100 - MIN]
+      p2 = Math.min(100 - MIN, Math.max(rounded, p1 + MIN));
+    }
+    applyWeights(p1, p2 - p1, 100 - p2);
+  }
+
+  function moveHandleFromX(which: "h1" | "h2", clientX: number) {
+    const el = barRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    moveHandleTo(which, ((clientX - rect.left) / rect.width) * 100);
+  }
+
+  function nudgeHandle(which: "h1" | "h2", delta: number) {
+    const w = weightRef.current;
+    const cur = which === "h1" ? w.speech : w.speech + w.attend;
+    moveHandleTo(which, cur + delta);
+  }
+
   async function saveSettings() {
     if (!team || !settings) return;
     setSaving(true);
@@ -205,6 +286,24 @@ export default function SettingsPage() {
       setSaving(false);
     }
   }
+
+  // 숫자 설정 입력 핸들러 — value를 숫자에 직접 묶으면 비울 때 0이 끼어들어
+  // 지우거나(특히 소수) 다시 입력하기 어렵다. 편집 중엔 draft 문자열을 보여주고,
+  // 포커스가 빠질 때 빈 값이면 0으로 확정한다.
+  type NumKey =
+    | "min_meeting_minutes"
+    | "late_threshold_minutes"
+    | "leader_bonus_multiplier";
+  const editNum = (key: NumKey, v: string) =>
+    setNumDraft((d) => ({ ...d, [key]: v }));
+  const commitNum = (key: NumKey, v: string) => {
+    setSettings((s) => s && { ...s, [key]: v === "" ? 0 : Number(v) });
+    setNumDraft((d) => {
+      const next = { ...d };
+      delete next[key];
+      return next;
+    });
+  };
 
   async function addToSlack() {
     if (!team) return;
@@ -274,6 +373,7 @@ export default function SettingsPage() {
       {/* 팀 정보 */}
       <Card icon="ti ti-users-group" title="팀 정보">
         <div
+          data-tour="st-info"
           style={{
             padding: "8px 16px 16px",
             display: "flex",
@@ -316,7 +416,7 @@ export default function SettingsPage() {
 
       {/* 초대 코드 */}
       <Card icon="ti ti-key" title="초대 코드">
-        <div style={{ padding: "8px 16px 16px" }}>
+        <div data-tour="st-invite" style={{ padding: "8px 16px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
@@ -357,7 +457,7 @@ export default function SettingsPage() {
 
       {/* 멤버 관리 */}
       <Card icon="ti ti-users" title="멤버 관리">
-        <div style={{ padding: "8px 16px 16px" }}>
+        <div data-tour="st-members" style={{ padding: "8px 16px 16px" }}>
           {members.map((m, i) => {
             const isMe = me?.id === m.user_id;
             return (
@@ -431,6 +531,7 @@ export default function SettingsPage() {
       {settings && (
         <Card icon="ti ti-adjustments" title="팀 설정">
           <div
+            data-tour="st-settings"
             style={{
               padding: "8px 16px 16px",
               display: "flex",
@@ -462,30 +563,62 @@ export default function SettingsPage() {
             </div>
 
             <div className="field">
-              <label className="field-label">무단결석 처리</label>
-              <select
-                className="input"
-                value={settings.absent_meeting_handling}
-                onChange={(e) =>
-                  setSettings(
-                    (s) =>
-                      s && {
-                        ...s,
-                        absent_meeting_handling: e.target
-                          .value as Settings["absent_meeting_handling"],
-                      },
-                  )
-                }
-                disabled={!isLeader}
+              <label
+                className="field-label"
+                style={{ display: "flex", alignItems: "center", gap: 6 }}
               >
-                <option value="exclude">해당 회의 기여도 집계 제외</option>
-                <option value="zero">기여도 0점 처리</option>
-                <option value="attendance_only">출석 점수만 차감</option>
-              </select>
-            </div>
-
-            <div className="field">
-              <label className="field-label">마감 패널티</label>
+                마감 패널티
+                <button
+                  type="button"
+                  onClick={() => setShowPenaltyInfo((v) => !v)}
+                  aria-label="마감 패널티 설명 보기"
+                  aria-expanded={showPenaltyInfo}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    color: showPenaltyInfo ? "var(--blue)" : "var(--text-soft)",
+                    fontSize: 15,
+                    lineHeight: 1,
+                  }}
+                >
+                  <i className="ti ti-info-circle" />
+                </button>
+              </label>
+              {showPenaltyInfo && (
+                <div
+                  style={{
+                    margin: "0 0 8px",
+                    padding: "10px 12px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border-2)",
+                    borderRadius: 10,
+                    fontSize: 12,
+                    color: "var(--text-soft)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  마감을 넘겨 제출한 태스크의 감점 폭을 정합니다.
+                  <br />
+                  <strong style={{ color: "var(--text-main)" }}>
+                    표준
+                  </strong>{" "}
+                  · 경과 시간에 비례해 일반적인 수준으로 감점합니다.
+                  <br />
+                  <strong style={{ color: "var(--text-main)" }}>
+                    완화
+                  </strong>{" "}
+                  · 늦게 제출해도 감점 폭이 작아 마감을 유연하게 적용합니다.
+                  <br />
+                  <strong style={{ color: "var(--text-main)" }}>
+                    엄격
+                  </strong>{" "}
+                  · 감점 폭이 커 기한 준수를 강하게 반영합니다.
+                </div>
+              )}
               <select
                 className="input"
                 value={settings.deadline_penalty_curve}
@@ -517,17 +650,44 @@ export default function SettingsPage() {
               <input
                 className="input"
                 type="number"
-                min={1}
+                min={0}
                 max={240}
-                value={settings.min_meeting_minutes}
+                value={
+                  numDraft.min_meeting_minutes ??
+                  String(settings.min_meeting_minutes)
+                }
                 onChange={(e) =>
-                  setSettings(
-                    (s) =>
-                      s && {
-                        ...s,
-                        min_meeting_minutes: Number(e.target.value),
-                      },
-                  )
+                  editNum("min_meeting_minutes", e.target.value)
+                }
+                onBlur={(e) =>
+                  commitNum("min_meeting_minutes", e.target.value)
+                }
+                disabled={!isLeader}
+              />
+            </div>
+
+            <div className="field">
+              <label className="field-label">
+                지각 기준 (분){" "}
+                <span style={{ color: "var(--text-soft)", fontWeight: 400 }}>
+                  회의 시작 후 {settings.late_threshold_minutes}분 초과 입장 시
+                  지각
+                </span>
+              </label>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                max={240}
+                value={
+                  numDraft.late_threshold_minutes ??
+                  String(settings.late_threshold_minutes)
+                }
+                onChange={(e) =>
+                  editNum("late_threshold_minutes", e.target.value)
+                }
+                onBlur={(e) =>
+                  commitNum("late_threshold_minutes", e.target.value)
                 }
                 disabled={!isLeader}
               />
@@ -546,15 +706,15 @@ export default function SettingsPage() {
                 min={0}
                 max={1}
                 step={0.1}
-                value={settings.leader_bonus_multiplier}
+                value={
+                  numDraft.leader_bonus_multiplier ??
+                  String(settings.leader_bonus_multiplier)
+                }
                 onChange={(e) =>
-                  setSettings(
-                    (s) =>
-                      s && {
-                        ...s,
-                        leader_bonus_multiplier: Number(e.target.value),
-                      },
-                  )
+                  editNum("leader_bonus_multiplier", e.target.value)
+                }
+                onBlur={(e) =>
+                  commitNum("leader_bonus_multiplier", e.target.value)
                 }
                 disabled={!isLeader}
               />
@@ -562,69 +722,186 @@ export default function SettingsPage() {
 
             <div className="field">
               <label className="field-label">
-                기여도 가중치 — 태스크 비중{" "}
+                기여도 종합 가중치{" "}
                 <span style={{ color: "var(--text-soft)", fontWeight: 400 }}>
-                  종합: 발언{" "}
-                  {Math.round(
-                    (1 - settings.final_task_weight) *
-                      settings.weight_speech_in_meeting *
-                      100,
-                  )}
-                  % · 출석{" "}
-                  {Math.round(
-                    (1 - settings.final_task_weight) *
-                      settings.weight_attend_in_meeting *
-                      100,
-                  )}
-                  % · 태스크 {Math.round(settings.final_task_weight * 100)}%
+                  {isLeader
+                    ? "막대 경계를 드래그해 비율을 조정하세요"
+                    : "팀장이 설정한 비율"}
                 </span>
               </label>
-              <input
-                className="input"
-                type="number"
-                min={0}
-                max={1}
-                step={0.05}
-                value={settings.final_task_weight}
-                onChange={(e) =>
-                  setSettings(
-                    (s) =>
-                      s && { ...s, final_task_weight: Number(e.target.value) },
-                  )
-                }
-                disabled={!isLeader}
-              />
-            </div>
 
-            <div className="field">
-              <label className="field-label">
-                회의 내 발언 비중 (출석 = 나머지){" "}
-                <span style={{ color: "var(--text-soft)", fontWeight: 400 }}>
-                  현재: 발언 {Math.round(settings.weight_speech_in_meeting * 100)}
-                  % · 출석 {Math.round(settings.weight_attend_in_meeting * 100)}%
-                </span>
-              </label>
-              <input
-                className="input"
-                type="number"
-                min={0}
-                max={1}
-                step={0.05}
-                value={settings.weight_speech_in_meeting}
-                onChange={(e) => {
-                  const ws = Number(e.target.value);
-                  setSettings(
-                    (s) =>
-                      s && {
-                        ...s,
-                        weight_speech_in_meeting: ws,
-                        weight_attend_in_meeting:
-                          Math.round((1 - ws) * 100) / 100,
-                      },
-                  );
+              {/* 라벨 (게이지 위) */}
+              <div style={{ display: "flex", marginBottom: 5 }}>
+                {(
+                  [
+                    ["발언", weightPct.speech],
+                    ["출석", weightPct.attend],
+                    ["태스크", weightPct.task],
+                  ] as const
+                ).map(([label, val]) => (
+                  <div
+                    key={label}
+                    style={{
+                      width: `${val}%`,
+                      textAlign: "center",
+                      overflow: "hidden",
+                      whiteSpace: "nowrap",
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      color: "var(--text-main)",
+                      transition: dragging ? "none" : "width .12s ease",
+                    }}
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
+
+              <div
+                ref={barRef}
+                style={{
+                  position: "relative",
+                  height: 24,
+                  userSelect: "none",
+                  touchAction: "none",
+                  margin: "0 0 14px",
                 }}
-                disabled={!isLeader}
-              />
+              >
+                {/* 세그먼트 (둥근 모서리로 클립) */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    border: "1px solid var(--border-2)",
+                  }}
+                >
+                  {(
+                    [
+                      ["발언", "var(--blue)", weightPct.speech],
+                      ["출석", "var(--amber)", weightPct.attend],
+                      ["태스크", "var(--green)", weightPct.task],
+                    ] as const
+                  ).map(([label, color, val]) => (
+                    <div
+                      key={label}
+                      style={{
+                        width: `${val}%`,
+                        background: color,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textShadow: "0 1px 2px rgba(0,0,0,.28)",
+                        overflow: "hidden",
+                        whiteSpace: "nowrap",
+                        transition: dragging ? "none" : "width .12s ease",
+                      }}
+                    >
+                      {val >= 10 ? `${val}%` : ""}
+                    </div>
+                  ))}
+                </div>
+
+                {/* 드래그 핸들 (팀장만) */}
+                {isLeader &&
+                  (
+                    [
+                      ["h1", weightPct.speech, "발언/출석 경계"],
+                      [
+                        "h2",
+                        weightPct.speech + weightPct.attend,
+                        "출석/태스크 경계",
+                      ],
+                    ] as const
+                  ).map(([which, pos, aria]) => (
+                    <div
+                      key={which}
+                      role="slider"
+                      aria-label={aria}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(pos)}
+                      tabIndex={0}
+                      onPointerDown={(e) => {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        dragRef.current = which;
+                        setDragging(true);
+                      }}
+                      onPointerMove={(e) => {
+                        if (dragRef.current !== which) return;
+                        moveHandleFromX(which, e.clientX);
+                      }}
+                      onPointerUp={(e) => {
+                        dragRef.current = null;
+                        setDragging(false);
+                        e.currentTarget.releasePointerCapture(e.pointerId);
+                      }}
+                      onKeyDown={(e) => {
+                        const step = e.shiftKey ? 5 : 1;
+                        if (e.key === "ArrowLeft") {
+                          e.preventDefault();
+                          nudgeHandle(which, -step);
+                        } else if (e.key === "ArrowRight") {
+                          e.preventDefault();
+                          nudgeHandle(which, step);
+                        }
+                      }}
+                      style={{
+                        position: "absolute",
+                        left: `${pos}%`,
+                        top: 0,
+                        width: 18,
+                        transform: "translateX(-50%)",
+                        cursor: "col-resize",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        zIndex: 2,
+                      }}
+                    >
+                      {/* 구분 직선 */}
+                      <span
+                        style={{
+                          width: 2,
+                          height: 24,
+                          flexShrink: 0,
+                          background: "var(--text-main)",
+                          boxShadow: "0 0 0 1px rgba(255,255,255,.55)",
+                        }}
+                      />
+                      {/* 경계선 아래 삼각형 (▼) */}
+                      <span
+                        style={{
+                          width: 0,
+                          height: 0,
+                          flexShrink: 0,
+                          marginTop: 2,
+                          borderLeft: "5px solid transparent",
+                          borderRight: "5px solid transparent",
+                          borderTop: "7px solid var(--text-main)",
+                          filter: "drop-shadow(0 1px 1px rgba(0,0,0,.25))",
+                        }}
+                      />
+                    </div>
+                  ))}
+              </div>
+
+              <div
+                style={{
+                  marginTop: 2,
+                  fontSize: 12,
+                  color: "var(--text-soft)",
+                  lineHeight: 1.5,
+                }}
+              >
+                종합 기여 = 발언×가중치 + 출석×가중치 + 태스크×가중치. 리포트의
+                막대·점수에 그대로 반영됩니다.
+              </div>
             </div>
 
             {isLeader && (
@@ -786,6 +1063,7 @@ export default function SettingsPage() {
       {/* 위험 구역 */}
       <Card icon="ti ti-alert-triangle" title="위험 구역">
         <div
+          data-tour="st-danger"
           style={{
             padding: "8px 16px 16px",
             display: "flex",
