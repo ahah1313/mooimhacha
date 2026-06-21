@@ -1247,6 +1247,15 @@
   border: 1px solid var(--border-2);
   border-radius: 15px;
   padding: 11px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 260px);
+}
+.col-cards {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 2px;
 }
 .col-head {
   display: flex;
@@ -1899,4 +1908,75 @@
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
+}
+
+/* 수정/삭제 이력 모달 */
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.log-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  padding: 11px 13px;
+}
+.log-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+.log-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+.log-badge-edit {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.log-badge-delete {
+  background: var(--coral-soft);
+  color: var(--coral);
+}
+.log-actor {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+.log-date {
+  font-size: 11px;
+  color: var(--text-mut);
+  margin-left: auto;
+}
+.log-desc {
+  font-size: 12.5px;
+  color: var(--text-soft);
+}
+.log-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.log-change-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+.log-field {
+  font-weight: 600;
+  color: var(--text-main);
+  min-width: 38px;
+}
+.log-from {
+  color: var(--coral);
+  text-decoration: line-through;
+}
+.log-to {
+  color: var(--green);
+  font-weight: 600;
 }
