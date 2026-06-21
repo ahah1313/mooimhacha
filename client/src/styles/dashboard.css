@@ -1728,6 +1728,56 @@
   max-width: 720px;
   margin: 0 auto;
 }
+/* 리포트 잠금(최소 회의 미달) */
+.report-lock {
+  margin-top: 48px;
+  padding: 40px 32px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  text-align: center;
+}
+.report-lock-ic {
+  font-size: 38px;
+  color: var(--text-soft);
+}
+.report-lock-title {
+  margin-top: 12px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+.report-lock-desc {
+  margin: 8px auto 0;
+  max-width: 360px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-soft);
+}
+.report-lock-bar {
+  margin: 20px auto 0;
+  max-width: 240px;
+  height: 8px;
+  border-radius: 5px;
+  background: var(--track);
+  overflow: hidden;
+}
+.report-lock-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--green);
+}
+.report-lock-count {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--text-soft);
+}
+.report-lock-count b {
+  color: var(--green);
+  font-weight: 800;
+}
 .report-banner {
   border-radius: 18px;
   padding: 24px 26px;
@@ -1786,9 +1836,29 @@
 
 .mrc {
   padding: 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 .mrc + .mrc {
   box-shadow: inset 0 1px 0 var(--border-2);
+}
+/* 왼쪽 레이더(1) : 오른쪽 막대(3) */
+.mrc-radar {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+.mrc-radar svg {
+  width: 100%;
+  max-width: 150px;
+  aspect-ratio: 1 / 1;
+  height: auto;
+}
+.mrc-main {
+  flex: 3;
+  min-width: 0;
 }
 .mrc-head {
   display: flex;
@@ -1875,6 +1945,58 @@
   width: 13px;
   height: 13px;
   border-radius: 4px;
+}
+
+/* 내가 완료한 태스크 목록 */
+/* 난이도 · 이름 · 세부사항 · 기한 4열 — 행마다 동일 간격으로 정렬 */
+.mdt-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) minmax(0, 3fr) 46px;
+  align-items: start;
+  column-gap: 12px;
+  padding: 9px 0;
+  font-size: 12.5px;
+}
+.mdt-row + .mdt-row {
+  box-shadow: inset 0 1px 0 var(--border-2);
+}
+.mdt-head {
+  padding: 0 0 6px;
+}
+.mdt-head span {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+.mdt-head span:last-child {
+  text-align: right;
+}
+.mdt-stars {
+  color: var(--amber);
+  font-size: 11px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.mdt-desc {
+  min-width: 0;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mdt-detail {
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mdt-date {
+  color: var(--text-soft);
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .ms-row {
