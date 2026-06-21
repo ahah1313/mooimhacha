@@ -14,12 +14,7 @@ import { getUser } from "@/lib/auth";
 import { apiFetch, authHeader } from "@/lib/apiFetch";
 import { apiGet } from "@/lib/api";
 import { createCompanionChannel } from "@/lib/companion";
-import type {
-  ActionItem,
-  Meeting,
-  AttendanceSummary,
-  TaskExtension,
-} from "@/lib/types";
+import type { ActionItem, Meeting, AttendanceSummary } from "@/lib/types";
 import OverviewPage from "./overview/OverviewPage";
 import MeetingPage from "./meeting/MeetingPage";
 import TasksPage from "./tasks/TasksPage";
@@ -66,7 +61,6 @@ export default function DashboardPage() {
   const [openTaskCount, setOpenTaskCount] = useState(0);
   // 처리할 일 알림(!): 회의=결석 동의 미처리, 태스크=팀장 연장 요청 대기
   const [hasAbsenceTodo, setHasAbsenceTodo] = useState(false);
-  const [hasExtensionTodo, setHasExtensionTodo] = useState(false);
 
   useEffect(() => {
     if (!teamId) return;
@@ -80,8 +74,7 @@ export default function DashboardPage() {
       apiGet<Meeting[]>(`/meetings?team_id=${teamId}`),
       apiGet<ActionItem[]>(`/action-items?team_id=${teamId}&confirmed=true`),
       apiGet<AttendanceSummary[]>(`/teams/${teamId}/attendance-summary`),
-      apiGet<TaskExtension[]>(`/teams/${teamId}/extensions?status=pending`),
-    ]).then(([ms, ts, att, ext]) => {
+    ]).then(([ms, ts, att]) => {
       if (ms.status === "fulfilled")
         setHasLive(ms.value.some((m) => m.status === "active"));
       if (ts.status === "fulfilled")
@@ -92,7 +85,6 @@ export default function DashboardPage() {
         );
       if (att.status === "fulfilled")
         setHasAbsenceTodo(att.value.some((s) => s.pending_count > 0));
-      if (ext.status === "fulfilled") setHasExtensionTodo(ext.value.length > 0);
     });
   }, [teamId]);
 
@@ -115,7 +107,6 @@ export default function DashboardPage() {
   // 처리할 일 알림(!) 표시 여부
   const alertFor = (key: string): boolean => {
     if (key === "meeting") return hasAbsenceTodo;
-    if (key === "tasks") return team?.my_role === "leader" && hasExtensionTodo;
     return false;
   };
 
@@ -170,7 +161,9 @@ export default function DashboardPage() {
               <div className={`av a${(i % 4) + 1} av-sm`}>{m.name[0]}</div>
               {m.name}
               {m.role === "leader" && <span className="leader-tag">팀장</span>}
-              {m.name === currentUser?.name && <span className="me-tag">나</span>}
+              {m.name === currentUser?.name && (
+                <span className="me-tag">나</span>
+              )}
             </div>
           ))}
         </div>
