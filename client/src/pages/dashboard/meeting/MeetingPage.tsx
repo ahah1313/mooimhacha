@@ -923,9 +923,9 @@ export default function MeetingPage() {
   );
   return (
     <>
-      <div className="meeting-layout">
+      <div className="meeting-layout" data-tour="mt-layout">
         {/* 사이드바 */}
-        <div className="msidebar">
+        <div className="msidebar" data-tour="mt-sidebar">
           <div className="msb-head">
             <span>회의 목록</span>
             <div style={{ display: "flex", gap: 6 }}>
@@ -940,6 +940,7 @@ export default function MeetingPage() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => setModalOpen("meeting")}
+                data-tour="mt-new"
               >
                 <i className="ti ti-plus" />
               </button>

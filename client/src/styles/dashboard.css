@@ -236,6 +236,32 @@
   padding: 0 24px;
   border-bottom: 1px solid var(--border-2);
 }
+/* 대시보드 가이드 재시작 버튼 (헤더 우측) */
+.dash-guide-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-2);
+  color: var(--text-mut);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    border-color 0.14s ease;
+}
+.dash-guide-btn .ti {
+  font-size: 14px;
+}
+.dash-guide-btn:hover {
+  color: var(--green);
+  border-color: var(--green);
+}
 .main-title {
   font-family: var(--font-display);
   font-size: 18px;

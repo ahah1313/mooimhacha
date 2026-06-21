@@ -4,6 +4,8 @@ import { useToast } from "@/hooks/useToast";
 import { getUser, clearSession } from "@/lib/auth";
 import { apiFetch, authHeader } from "@/lib/apiFetch";
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import { useTourStore } from "@/stores/tourStore";
+import { HOME_STEPS } from "@/components/tour/steps";
 import Card from "@/components/Card";
 import ProfileEditModal from "@/components/ProfileEditModal";
 import type {
@@ -86,6 +88,7 @@ function dueInfo(due: string | null): { text: string; cls: string } | null {
 export default function HomePage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const startTour = useTourStore((s) => s.start);
   const user = getUser();
   const userName = user?.name ?? "사용자";
   const userInitial = userName[0];
@@ -111,6 +114,15 @@ export default function HomePage() {
   useEffect(() => {
     fetchTeams();
   }, []);
+
+  // 첫 로그인(이 브라우저에서 가이드를 처음 보는 경우) 자동 안내 — 1회만 실행.
+  // 이후엔 '내 그룹' 우측의 "무임하차가 처음이신가요?" 버튼으로 다시 볼 수 있다.
+  useEffect(() => {
+    if (!localStorage.getItem("mh_tour_guided")) {
+      localStorage.setItem("mh_tour_guided", "1");
+      startTour(HOME_STEPS);
+    }
+  }, [startTour]);
 
   // 팀 목록이 잡히면 팀별 데이터(내 태스크·예정 회의·내 기여도)를 모아온다
   useEffect(() => {
@@ -394,6 +406,14 @@ export default function HomePage() {
                 <i className="ti ti-users-group" /> 내 그룹
               </div>
               <span className="sec-count">{teams.length}개 참여 중</span>
+              {/* 가이드 투어 재시작 — 우측 정렬(margin-left:auto) */}
+              <button
+                className="tour-cta"
+                onClick={() => startTour(HOME_STEPS)}
+                aria-label="가이드 투어 다시 보기"
+              >
+                <i className="ti ti-help" /> 무임하차가 처음이신가요?
+              </button>
             </div>
             <div className="groups-grid">
               {teams.map((team) => {
@@ -457,6 +477,7 @@ export default function HomePage() {
               })}
               <div
                 className="new-group"
+                data-tour="new-group-card"
                 onClick={() => navigate("/onboarding")}
               >
                 <div className="ng-circle">

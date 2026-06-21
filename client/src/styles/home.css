@@ -107,6 +107,33 @@
   color: var(--text-soft);
   font-weight: 500;
 }
+/* '무임하차가 처음이신가요?' — 가이드 투어 재시작 CTA (내 그룹 헤더 우측) */
+.tour-cta {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--green-soft);
+  color: var(--green);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease;
+}
+.tour-cta .ti {
+  font-size: 14px;
+}
+.tour-cta:hover {
+  background: var(--surface);
+  border-color: var(--green);
+}
 
 .groups-grid {
   display: grid;

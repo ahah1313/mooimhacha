@@ -645,9 +645,9 @@ export default function TasksPage() {
 
   return (
     <div>
-      <div className="task-top">
+      <div className="task-top" data-tour="tk-controls">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div className="view-toggle">
+          <div className="view-toggle" data-tour="tk-views">
             <button
               className={`vt ${view === "board" ? "active" : ""}`}
               onClick={() => setView("board")}
@@ -684,6 +684,7 @@ export default function TasksPage() {
           )}
           <button
             className="btn btn-primary btn-sm"
+            data-tour="tk-add"
             onClick={() => setModalOpen(true)}
           >
             <i className="ti ti-plus" /> 태스크 추가
@@ -691,7 +692,7 @@ export default function TasksPage() {
         </div>
       </div>
 
-      <div className="prog-strip">
+      <div className="prog-strip" data-tour="tk-progress">
         <span className="lbl">전체 진행률</span>
         <div className="prog-bg">
           <div
@@ -706,7 +707,7 @@ export default function TasksPage() {
 
       {/* 보드 뷰 */}
       {view === "board" && (
-        <div className="board">
+        <div className="board" data-tour="tk-board">
           {STATUS_COLS.map((col) => {
             const colTasks = filteredTasks.filter(
               (t) => API_TO_STATUS[t.status] === col,

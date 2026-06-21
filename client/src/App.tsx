@@ -8,6 +8,7 @@ import MeetingLauncher from "@/pages/meeting/MeetingLauncher";
 import ContributionDashboard from "@/pages/meeting/ContributionDashboard";
 import AttendancePage from "@/pages/attendance/AttendancePage";
 import TermsPage from "@/pages/terms/TermsPage";
+import TourOverlay from "@/components/tour/TourOverlay";
 import { useToast } from "@/hooks/useToast";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -84,6 +85,7 @@ export default function App() {
         <i className="ti ti-circle-check" />
         <span />
       </div>
+      <TourOverlay />
     </div>
   );
 }

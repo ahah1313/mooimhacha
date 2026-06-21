@@ -14,6 +14,8 @@ import { getUser } from "@/lib/auth";
 import { apiFetch, authHeader } from "@/lib/apiFetch";
 import { apiGet } from "@/lib/api";
 import { createCompanionChannel } from "@/lib/companion";
+import { useTourStore } from "@/stores/tourStore";
+import { makeDashboardSteps } from "@/components/tour/steps";
 import type {
   ActionItem,
   Meeting,
@@ -59,6 +61,8 @@ export default function DashboardPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const current = pathname.split("/")[3] || "overview";
   const currentUser = getUser();
+  const startTour = useTourStore((s) => s.start);
+  const tourActive = useTourStore((s) => s.active);
   const [team, setTeam] = useState<TeamContext | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // 사이드바 배지: 진행 중 회의가 있을 때만 LIVE, 미완료 태스크 수
@@ -104,6 +108,15 @@ export default function DashboardPage() {
     };
     return () => ch.close();
   }, []);
+
+  // 대시보드 첫 방문 시 자동 안내(1회). 다른 투어(홈 가이드 등)가 진행 중이면
+  // 끝난 뒤 자동으로 시작되게 active 를 의존성에 둔다.
+  useEffect(() => {
+    if (tourActive || !teamId) return;
+    if (localStorage.getItem("mh_dash_tour_guided")) return;
+    localStorage.setItem("mh_dash_tour_guided", "1");
+    startTour(makeDashboardSteps(teamId));
+  }, [tourActive, teamId, startTour]);
 
   const badgeFor = (key: string): { text: string; live: boolean } | null => {
     if (key === "meeting" && hasLive) return { text: "LIVE", live: true };
@@ -199,6 +212,14 @@ export default function DashboardPage() {
             />
           </button>
           <div className="main-title">{TITLE[current] ?? "대시보드"}</div>
+          {/* 대시보드 가이드 재시작 — 우측 정렬 */}
+          <button
+            className="dash-guide-btn"
+            onClick={() => teamId && startTour(makeDashboardSteps(teamId))}
+            aria-label="대시보드 가이드 다시 보기"
+          >
+            <i className="ti ti-help" /> 가이드
+          </button>
         </div>
         <div className="main-content scroll">
           <Routes>

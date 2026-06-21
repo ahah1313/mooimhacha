@@ -1,0 +1,257 @@
+/* 가이드 투어 오버레이. 색·폰트·그림자는 global.css 토큰 재사용.
+   step마다 accent 색이 바뀐다 — tour-root / 대상 요소에 .acc-* 가 붙어
+   --accent 를 내려주고, 말풍선·화살표·하이라이트 링이 모두 이를 따른다. */
+.tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none; /* 클릭은 실제 화면으로 통과 — 사용자가 진짜 버튼을 누른다 */
+}
+
+/* ---------- step별 accent ---------- */
+.acc-green {
+  --accent: var(--green);
+}
+.acc-blue {
+  --accent: var(--blue);
+}
+.acc-violet {
+  --accent: var(--violet);
+}
+.acc-amber {
+  --accent: var(--amber);
+}
+.acc-coral {
+  --accent: var(--coral);
+}
+.acc-pink {
+  --accent: var(--pink);
+}
+
+.tour-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* 버튼 자체 강조 — 확장하며 사라지는 펄스 링. 딤·박스 없음.
+   요소의 ::after에 직접 그려 버튼 모양(border-radius)을 그대로 따른다.
+   색은 그 step의 --accent(.acc-* 가 대상 요소에도 붙는다). */
+.tour-highlight {
+  position: relative;
+  z-index: 1;
+  /* box-shadow 로 그려 input·select 같은 폼 컨트롤에서도 보인다(::after 는 폼 컨트롤에 안 뜸).
+     요소 자신의 border-radius 를 따라 둥근 링이 그려진다. */
+  animation: tour-pulse-ring 1.6s ease-out infinite;
+}
+@keyframes tour-pulse-ring {
+  0% {
+    box-shadow:
+      0 0 0 2.5px var(--accent, var(--green)),
+      0 0 0 3px color-mix(in srgb, var(--accent, var(--green)) 40%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 2.5px var(--accent, var(--green)),
+      0 0 0 12px transparent;
+  }
+}
+
+/* 위치 전용 래퍼 — top/left/transform을 여기서 잡는다.
+   (framer-motion의 scale 애니메이션이 motion.div의 transform을 덮어쓰므로 분리) */
+.tour-anchor {
+  position: fixed;
+  z-index: 9999; /* 말풍선은 딤·글로우보다 위 */
+  pointer-events: none;
+}
+
+/* 말풍선 — 흰 배경에 은은한 accent 틴트 + 굵은 accent 테두리 + 글로우. */
+.tour-bubble {
+  position: relative;
+  pointer-events: auto; /* 말풍선 안 버튼은 클릭 가능 */
+  width: 240px;
+  max-width: calc(100vw - 32px);
+  border-radius: 18px;
+  padding: 15px 17px 13px;
+  border: 3px solid var(--accent, var(--green)); /* 굵은 accent 테두리 — 비크 없음 */
+  background: linear-gradient(
+    180deg,
+    var(--surface),
+    color-mix(in srgb, var(--accent, var(--green)) 5%, var(--surface))
+  );
+  box-shadow:
+    0 14px 32px color-mix(in srgb, var(--accent, var(--green)) 26%, transparent),
+    0 3px 10px color-mix(in srgb, var(--accent, var(--green)) 15%, transparent);
+}
+
+/* 말풍선 면 중앙 ↔ 대상 면 중앙을 잇는 SVG 점선 직선 + 화살촉.
+   stroke 는 tour-root 의 --accent 를 상속(svg 가 tour-root 자식). */
+.tour-arrow-svg {
+  position: fixed;
+  inset: 0;
+  z-index: 9991; /* 페이지 위, 말풍선(9999) 아래 */
+  pointer-events: none;
+  overflow: visible;
+}
+.tour-arrow-line {
+  fill: none;
+  stroke: var(--accent, var(--green));
+  stroke-width: 2.8;
+  stroke-dasharray: 7 8;
+  stroke-linecap: round;
+}
+.tour-arrow-head {
+  fill: none;
+  stroke: var(--accent, var(--green));
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tour-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--accent, var(--green));
+  margin-bottom: 5px;
+}
+.tour-title i {
+  font-size: 17px;
+  flex: 0 0 auto;
+}
+.tour-body {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-mut);
+  margin-bottom: 11px;
+}
+/* 드래그 예시 모션 — 카드가 '할 일' 칸에서 '진행 중' 칸으로 옮겨지는 데모(반복) */
+.tour-demo {
+  position: relative;
+  display: flex;
+  gap: 7px;
+  height: 60px;
+  margin-bottom: 11px;
+}
+.tour-demo-col {
+  flex: 1;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent, var(--green)) 8%, var(--surface));
+  border: 1px dashed color-mix(in srgb, var(--accent, var(--green)) 32%, transparent);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-soft);
+  text-align: center;
+  padding-top: 5px;
+}
+.tour-demo-card {
+  position: absolute;
+  left: 6px;
+  top: 24px;
+  width: calc(50% - 13px);
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1.6px solid var(--accent, var(--green));
+  color: var(--accent, var(--green));
+  font-size: 10.5px;
+  font-weight: 700;
+  animation: tour-drag-demo 2.6s cubic-bezier(0.5, 0.05, 0.45, 0.95) infinite;
+}
+.tour-demo-card i {
+  font-size: 13px;
+}
+@keyframes tour-drag-demo {
+  0%,
+  12% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    box-shadow: 0 2px 5px color-mix(in srgb, var(--accent, var(--green)) 20%, transparent);
+  }
+  26% {
+    transform: translate(0, -5px) scale(1.05) rotate(-2deg);
+    box-shadow: 0 9px 16px color-mix(in srgb, var(--accent, var(--green)) 36%, transparent);
+  }
+  58% {
+    transform: translate(calc(100% + 13px), -5px) scale(1.05) rotate(-2deg);
+    box-shadow: 0 9px 16px color-mix(in srgb, var(--accent, var(--green)) 36%, transparent);
+  }
+  72%,
+  100% {
+    transform: translate(calc(100% + 13px), 0) scale(1) rotate(0deg);
+    box-shadow: 0 2px 5px color-mix(in srgb, var(--accent, var(--green)) 20%, transparent);
+  }
+}
+.tour-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tour-count {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--accent, var(--green));
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.tour-skip {
+  background: transparent;
+  border: none;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.tour-skip:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+/* 선택 단계용 '다음' 버튼 — accent 색 채움 */
+.tour-next {
+  background: var(--accent, var(--green));
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tour-next:hover {
+  filter: brightness(1.06);
+}
+.tour-kbd {
+  font-size: 11px;
+  opacity: 0.85;
+  margin-left: 1px;
+}
+
+/* 축하 단계 — 가운데 카드 */
+.tour-bubble.celebrate {
+  width: 300px;
+  text-align: center;
+  padding: 26px 22px 20px;
+}
+.tour-bubble.celebrate .tour-title {
+  justify-content: center;
+}
+.tour-confetti {
+  font-size: 40px;
+  line-height: 1;
+  color: var(--accent, var(--green));
+  margin-bottom: 8px;
+}

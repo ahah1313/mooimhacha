@@ -205,7 +205,7 @@ export default function OverviewPage() {
   return (
     <div>
       {derived.urgent.length > 0 ? (
-        <div className="alert-bar">
+        <div className="alert-bar" data-tour="ov-alert">
           <i className="ti ti-alert-triangle" />{" "}
           {(() => {
             const name = derived.nameById.get(
@@ -219,7 +219,7 @@ export default function OverviewPage() {
       ) : null}
 
       {/* 통계 */}
-      <div className="stats-grid">
+      <div className="stats-grid" data-tour="ov-stats">
         {[
           {
             lbl: "총 회의",
@@ -262,66 +262,72 @@ export default function OverviewPage() {
 
       <div className="dash-grid">
         {/* 기여도 현황 */}
-        <Card
-          icon="ti ti-chart-bar"
-          title="기여도 현황"
-          titleSuffix={
-            <span className="live-dot" style={{ background: "var(--green)" }} />
-          }
-          extra={<span className="badge b-green">실시간</span>}
-        >
-          <div style={{ padding: "2px 18px 14px" }}>
-            {contrib.length === 0 && (
-              <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>
-                아직 산정된 기여도가 없습니다. 회의를 진행하면 집계돼요.
-              </div>
-            )}
-            {contrib.map((c, i) => {
-              const pct =
-                c.composite_score == null
-                  ? null
-                  : Math.round(c.composite_score * 100);
-              const myTasks = derived.visible.filter(
-                (t) => t.assignee_id === c.user_id,
-              );
-              const myDone = myTasks.filter((t) => t.status === "done");
-              return (
-                <div key={c.user_id} className="contrib-row">
-                  <span className="c-name">{c.name}</span>
-                  <span className="c-bar">
-                    <i
-                      data-w={pct ?? 0}
-                      style={{
-                        width: 0,
-                        background: MEMBER_COLORS[i % MEMBER_COLORS.length],
-                      }}
-                    />
-                  </span>
-                  <span
-                    className="c-pct"
-                    style={
-                      pct == null ? { color: "var(--text-soft)" } : undefined
-                    }
-                  >
-                    {pct == null ? "-%" : `${pct}%`}
-                  </span>
-                  <span
-                    className="c-task"
-                    style={{ color: "var(--text-soft)" }}
-                  >
-                    {myTasks.length
-                      ? `태스크 ${myDone.length}/${myTasks.length}`
-                      : "-"}
-                  </span>
+        {/* align-self:start — 그리드가 행 높이로 늘리면 강조 링이 카드보다 커지므로 콘텐츠 높이에 맞춘다 */}
+        <div data-tour="ov-contrib" style={{ alignSelf: "start" }}>
+          <Card
+            icon="ti ti-chart-bar"
+            title="기여도 현황"
+            titleSuffix={
+              <span
+                className="live-dot"
+                style={{ background: "var(--green)" }}
+              />
+            }
+            extra={<span className="badge b-green">실시간</span>}
+          >
+            <div style={{ padding: "2px 18px 14px" }}>
+              {contrib.length === 0 && (
+                <div style={{ fontSize: 12.5, color: "var(--text-soft)" }}>
+                  아직 산정된 기여도가 없습니다. 회의를 진행하면 집계돼요.
                 </div>
-              );
-            })}
-          </div>
-        </Card>
+              )}
+              {contrib.map((c, i) => {
+                const pct =
+                  c.composite_score == null
+                    ? null
+                    : Math.round(c.composite_score * 100);
+                const myTasks = derived.visible.filter(
+                  (t) => t.assignee_id === c.user_id,
+                );
+                const myDone = myTasks.filter((t) => t.status === "done");
+                return (
+                  <div key={c.user_id} className="contrib-row">
+                    <span className="c-name">{c.name}</span>
+                    <span className="c-bar">
+                      <i
+                        data-w={pct ?? 0}
+                        style={{
+                          width: 0,
+                          background: MEMBER_COLORS[i % MEMBER_COLORS.length],
+                        }}
+                      />
+                    </span>
+                    <span
+                      className="c-pct"
+                      style={
+                        pct == null ? { color: "var(--text-soft)" } : undefined
+                      }
+                    >
+                      {pct == null ? "-%" : `${pct}%`}
+                    </span>
+                    <span
+                      className="c-task"
+                      style={{ color: "var(--text-soft)" }}
+                    >
+                      {myTasks.length
+                        ? `태스크 ${myDone.length}/${myTasks.length}`
+                        : "-"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
 
         {/* 예정된 회의: .mini-meeting 전용 레이아웃이라 Card 컴포넌트 미사용.
             card-head/card-title 클래스는 헤더 스타일만 재사용. */}
-        <div className="mini-meeting">
+        <div className="mini-meeting" data-tour="ov-meeting">
           <div className="card-head" style={{ padding: "0 0 10px" }}>
             <span className="card-title">
               <i className="ti ti-clock" /> 예정된 회의
