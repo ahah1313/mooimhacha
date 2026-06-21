@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
-import { todayStr, nowTimeStr, timeMinForDate } from "@/lib/dateUtils";
+import { todayStr, timeMinForDate } from "@/lib/dateUtils";
 import { useToast } from "@/hooks/useToast";
 import Modal from "@/components/Modal";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -103,15 +103,17 @@ export default function TasksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newDesc, setNewDesc] = useState("");
+  const [newDetail, setNewDetail] = useState("");
   const [newAssignee, setNewAssignee] = useState<string>("");
   const [newDue, setNewDue] = useState(todayStr());
-  const [newTime, setNewTime] = useState(nowTimeStr());
+  const [newTime, setNewTime] = useState("");
   const [newStatus, setNewStatus] = useState<Status>("할 일");
   const [newDifficulty, setNewDifficulty] = useState(2);
 
   // 수정 모달
   const [editTarget, setEditTarget] = useState<ActionItem | null>(null);
   const [editDesc, setEditDesc] = useState("");
+  const [editDetail, setEditDetail] = useState("");
   const [editAssignee, setEditAssignee] = useState("");
   const [editDue, setEditDue] = useState("");
   const [editTime, setEditTime] = useState("");
@@ -341,6 +343,7 @@ export default function TasksPage() {
   function openEdit(task: ActionItem) {
     setEditTarget(task);
     setEditDesc(task.description);
+    setEditDetail(task.detail ?? "");
     setEditAssignee(task.assignee_id ? String(task.assignee_id) : "");
     if (task.due_date) {
       const dt = new Date(task.due_date);
@@ -394,23 +397,50 @@ export default function TasksPage() {
       hasChange = true;
     }
 
-    if (!hasChange) {
+    // 세부사항은 점수에 영향 없는 메모 → 승인 없이 즉시 반영
+    const detailChanged = editDetail.trim() !== (editTarget.detail ?? "");
+
+    if (!hasChange && !detailChanged) {
       showToast("변경된 항목이 없습니다", "error");
       return;
     }
-    if (!editReason.trim()) {
+    // 점수에 영향 주는 변경(이름·난이도·담당자·마감일)만 팀장 승인 필요
+    if (hasChange && !editReason.trim()) {
       showToast("수정 사유를 입력해 주세요", "error");
       return;
     }
-    body.reason = editReason.trim();
 
-    if (extensions.get(editTarget.id)?.status === "pending") {
-      setPendingRequestBody(body);
-      setConfirmOverwrite(true);
+    if (detailChanged) {
+      const nextDetail = editDetail.trim() || null;
+      try {
+        await apiPatch(`/action-items/${editTarget.id}`, {
+          detail: nextDetail,
+        });
+        setTasks((ts) =>
+          ts.map((t) =>
+            t.id === editTarget.id ? { ...t, detail: nextDetail } : t,
+          ),
+        );
+      } catch (e) {
+        showToast((e as Error).message, "error");
+        return;
+      }
+    }
+
+    if (hasChange) {
+      body.reason = editReason.trim();
+      if (extensions.get(editTarget.id)?.status === "pending") {
+        setPendingRequestBody(body);
+        setConfirmOverwrite(true);
+        return;
+      }
+      await doSendRequest(editTarget.id, body);
       return;
     }
 
-    await doSendRequest(editTarget.id, body);
+    // 세부사항만 변경된 경우 — 즉시 반영 후 종료
+    setEditTarget(null);
+    showToast("세부사항을 수정했어요");
   }
 
   async function doSendRequest(taskId: number, body: Record<string, unknown>) {
@@ -588,6 +618,7 @@ export default function TasksPage() {
       await apiPost("/action-items", {
         team_id: team.id,
         description: newDesc.trim(),
+        detail: newDetail.trim() || undefined,
         assignee_id: newAssignee ? Number(newAssignee) : undefined,
         due_date: newDue
           ? new Date(`${newDue}T${newTime || "23:59"}`).toISOString()
@@ -597,9 +628,10 @@ export default function TasksPage() {
       });
       setModalOpen(false);
       setNewDesc("");
+      setNewDetail("");
       setNewAssignee("");
       setNewDue(todayStr());
-      setNewTime(nowTimeStr());
+      setNewTime("");
       setNewStatus("할 일");
       setNewDifficulty(2);
       showToast("태스크가 추가되었습니다");
@@ -764,6 +796,7 @@ export default function TasksPage() {
                           </span>
                         </span>
                       </div>
+                      {t.detail && <div className="tc-detail">{t.detail}</div>}
                       <div className="tc-foot">
                         <span className="tc-who">
                           <span
@@ -879,10 +912,13 @@ export default function TasksPage() {
                   >
                     <i className="ti ti-check" />
                   </div>
-                  <div
-                    className={`lrow-title ${status === "완료" ? "done" : ""}`}
-                  >
-                    {t.description}
+                  <div className="lrow-titlebox">
+                    <div
+                      className={`lrow-title ${status === "완료" ? "done" : ""}`}
+                    >
+                      {t.description}
+                    </div>
+                    {t.detail && <div className="lrow-detail">{t.detail}</div>}
                   </div>
                   <span className={`badge ${COL_BADGE[status] || "b-gray"}`}>
                     {status}
@@ -997,6 +1033,17 @@ export default function TasksPage() {
               onChange={(e) => setNewDesc(e.target.value)}
             />
           </div>
+          <div className="field">
+            <label className="field-label">세부사항 (선택)</label>
+            <textarea
+              className="input"
+              rows={2}
+              maxLength={2000}
+              placeholder="예) 참고 링크, 작업 범위 등 메모"
+              value={newDetail}
+              onChange={(e) => setNewDetail(e.target.value)}
+            />
+          </div>
           <div className="field-row">
             <div className="field">
               <label className="field-label">담당자</label>
@@ -1107,6 +1154,18 @@ export default function TasksPage() {
               value={editDesc}
               onChange={(e) => setEditDesc(e.target.value)}
             />
+          </div>
+          <div className="field">
+            <label className="field-label">세부사항 (선택)</label>
+            <textarea
+              className="input"
+              rows={2}
+              maxLength={2000}
+              placeholder="예) 참고 링크, 작업 범위 등 메모"
+              value={editDetail}
+              onChange={(e) => setEditDetail(e.target.value)}
+            />
+            <div className="field-hint">세부사항은 승인 없이 바로 반영돼요</div>
           </div>
           <div className="field-row">
             <div className="field">

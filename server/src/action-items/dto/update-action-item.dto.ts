@@ -18,6 +18,12 @@ export class UpdateActionItemDto {
   @IsString()
   description?: string;
 
+  @ApiPropertyOptional({ description: '세부사항(선택 메모, null=비우기)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  detail?: string | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()

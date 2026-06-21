@@ -59,6 +59,7 @@ export interface ActionItem {
   meeting_id: number | null;
   assignee_id: number | null;
   description: string;
+  detail: string | null;
   due_date: string | null;
   completed_at: string | null;
   difficulty: number;

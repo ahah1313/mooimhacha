@@ -28,6 +28,10 @@ export class ActionItem {
   @Column({ type: 'text' })
   description!: string;
 
+  // 선택 입력 세부사항(메모). 점수에 영향 없는 메타데이터.
+  @Column({ type: 'text', nullable: true })
+  detail!: string | null;
+
   @Column({ type: 'datetime', nullable: true })
   due_date!: Date | null;
 

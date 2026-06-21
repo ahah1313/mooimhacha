@@ -27,6 +27,7 @@ export class ActionItemsService {
     const action = this.actionRepo.create({
       team_id: dto.team_id,
       description: dto.description,
+      detail: dto.detail ?? null,
       assignee_id: dto.assignee_id ?? null,
       due_date: dto.due_date ? new Date(dto.due_date) : null,
       difficulty: dto.difficulty ?? 2,
@@ -63,6 +64,7 @@ export class ActionItemsService {
   async update(userId: number, id: number, dto: UpdateActionItemDto) {
     const action = await this.requireAction(userId, id);
     if (dto.description !== undefined) action.description = dto.description;
+    if (dto.detail !== undefined) action.detail = dto.detail;
     if (dto.assignee_id !== undefined) action.assignee_id = dto.assignee_id;
     if (dto.due_date !== undefined) action.due_date = new Date(dto.due_date);
     if (dto.difficulty !== undefined) action.difficulty = dto.difficulty;

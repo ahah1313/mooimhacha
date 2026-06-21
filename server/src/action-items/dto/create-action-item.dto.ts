@@ -24,6 +24,12 @@ export class CreateActionItemDto {
   @IsString()
   description!: string;
 
+  @ApiPropertyOptional({ description: '세부사항(선택 메모)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  detail?: string;
+
   @ApiPropertyOptional({ description: '담당자 user_id' })
   @IsOptional()
   @IsInt()
