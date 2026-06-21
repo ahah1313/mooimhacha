@@ -68,22 +68,12 @@ export interface ActionItem {
   confirmed: boolean;
 }
 
-export interface TaskExtension {
+export interface ActionItemLog {
   id: number;
-  action_item_id: number;
-  requester_id: number;
-  requester_name: string;
+  actor_name: string;
+  action: "edit" | "delete";
   task_description: string;
-  type: "change" | "delete";
-  current_due_date: string | null;
-  current_difficulty: number | null;
-  current_assignee_id: number | null;
-  requested_due_date: string | null;
-  requested_description: string | null;
-  requested_difficulty: number | null;
-  requested_assignee_id: number | null;
-  reason: string;
-  status: "pending" | "approved" | "rejected";
+  changes: { field: string; from: string | null; to: string | null }[] | null;
   created_at: string;
 }
 

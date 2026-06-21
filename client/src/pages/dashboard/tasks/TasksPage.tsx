@@ -4,9 +4,9 @@ import { todayStr, timeMinForDate } from "@/lib/dateUtils";
 import { useToast } from "@/hooks/useToast";
 import Modal from "@/components/Modal";
 import ConfirmModal from "@/components/ConfirmModal";
-import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api";
 import { getUser } from "@/lib/auth";
-import type { ActionItem, TeamContribution, TaskExtension } from "@/lib/types";
+import type { ActionItem, TeamContribution, ActionItemLog } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 
 type Status = "할 일" | "진행 중" | "완료";
@@ -94,8 +94,13 @@ export default function TasksPage() {
   const { showToast } = useToast();
   const team = useOutletContext<TeamContext | null>();
   const currentUser = getUser();
-  const [view, setView] = useState<"board" | "list">("board");
+  const [view, setView] = useState<"board" | "list" | "history">("board");
   const [filter, setFilter] = useState<"all" | "mine">("all");
+  const [listSort, setListSort] = useState<"newest" | "difficulty" | "oldest">(
+    "newest",
+  );
+  const [historyLogs, setHistoryLogs] = useState<ActionItemLog[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [tasks, setTasks] = useState<ActionItem[]>([]);
   const [members, setMembers] = useState<TeamContribution[]>([]);
 
@@ -118,15 +123,9 @@ export default function TasksPage() {
   const [editDue, setEditDue] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editDifficulty, setEditDifficulty] = useState(2);
-  const [editReason, setEditReason] = useState("");
+  const [editStatus, setEditStatus] = useState<Status>("할 일");
   const [editSaving, setEditSaving] = useState(false);
-  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
-  const [pendingRequestBody, setPendingRequestBody] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [statusChangePending, setStatusChangePending] = useState<{
     task: ActionItem;
@@ -144,28 +143,10 @@ export default function TasksPage() {
   const [shareBatchIdx, setShareBatchIdx] = useState(0);
   const [shareTitle, setShareTitle] = useState("");
 
-  // 기한 연장: 태스크별 최신 요청 (action_item_id → 요청)
-  const [extensions, setExtensions] = useState<Map<number, TaskExtension>>(
-    new Map(),
-  );
-  const [viewingExt, setViewingExt] = useState<TaskExtension | null>(null);
-
-  // 팀의 연장 요청 로드 — 태스크별 최신 1건만 (list는 created_at DESC)
-  const loadExtensions = useCallback(async () => {
-    if (!team) return;
-    try {
-      const list = await apiGet<TaskExtension[]>(
-        `/teams/${team.id}/extensions`,
-      );
-      const byTask = new Map<number, TaskExtension>();
-      for (const e of list) {
-        if (!byTask.has(e.action_item_id)) byTask.set(e.action_item_id, e);
-      }
-      setExtensions(byTask);
-    } catch {
-      /* 부가 정보 — 실패는 조용히 무시 */
-    }
-  }, [team]);
+  // 수정/삭제 이력
+  const [logsTarget, setLogsTarget] = useState<ActionItem | null>(null);
+  const [logs, setLogs] = useState<ActionItemLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!team) return;
@@ -185,103 +166,12 @@ export default function TasksPage() {
 
   useEffect(() => {
     void load();
-    void loadExtensions();
-  }, [load, loadExtensions]);
+  }, [load]);
 
-  async function approveExt(extId: number) {
-    try {
-      await apiPost(`/extensions/${extId}/approve`);
-      await Promise.all([load(), loadExtensions()]);
-      showToast("연장을 수락했습니다");
-    } catch (e) {
-      showToast((e as Error).message, "error");
-    }
-  }
-
-  async function rejectExt(extId: number) {
-    try {
-      await apiPost(`/extensions/${extId}/reject`);
-      await loadExtensions();
-      showToast("연장을 거절했습니다");
-    } catch (e) {
-      showToast((e as Error).message, "error");
-    }
-  }
-
-  // 태스크 카드 인라인 연장 영역 — board/list 공용
-  function renderExtension(t: ActionItem) {
-    const status = API_TO_STATUS[t.status];
-    const dd = dueState(t.due_date);
-    const overdue = status !== "완료" && dd.danger;
-    const ext = extensions.get(t.id);
-    const isLeader = team?.my_role === "leader";
-    const isMine = t.assignee_id === currentUser?.id;
-
-    if (ext?.status === "pending") {
-      const isDelete = ext.type === "delete";
-      const parts: string[] = [];
-      if (!isDelete) {
-        if (ext.requested_description) parts.push("이름");
-        if (ext.requested_difficulty != null) parts.push("난이도");
-        if (ext.requested_assignee_id != null) parts.push("담당자");
-        if (ext.requested_due_date) parts.push("마감일");
-      }
-      const leaderActions = (
-        <span className="tc-ext-acts">
-          <button
-            className="tc-ext-reason-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              setViewingExt(ext);
-            }}
-            title="사유 보기"
-          >
-            <i className="ti ti-message-circle" /> 사유 확인
-          </button>
-          <button className="tc-ext-ok" onClick={() => void approveExt(ext.id)}>
-            수락
-          </button>
-          <button className="tc-ext-no" onClick={() => void rejectExt(ext.id)}>
-            거절
-          </button>
-        </span>
-      );
-      return (
-        <div className="tc-ext" onClick={(e) => e.stopPropagation()}>
-          {isDelete ? (
-            <span className="tc-ext-label" style={{ color: "var(--coral)" }}>
-              <i className="ti ti-trash" /> 삭제 요청 중…
-            </span>
-          ) : (
-            <span className="tc-ext-label">
-              <i className="ti ti-clock-hour-4" />
-              {parts.map((p) => (
-                <span key={p} className="tc-ext-field-badge">
-                  {p}
-                </span>
-              ))}{" "}
-              변경 요청 중…
-            </span>
-          )}
-          {isLeader ? (
-            leaderActions
-          ) : (
-            <span className="tc-ext-wait">대기 중</span>
-          )}
-        </div>
-      );
-    }
-    if (ext?.status === "rejected" && (overdue || isMine)) {
-      const isDelete = ext.type === "delete";
-      return (
-        <span className="tc-ext-label" style={{ color: "var(--coral)" }}>
-          <i className="ti ti-x" /> {isDelete ? "삭제 거절됨" : "수정 거절됨"} ·
-          카드를 눌러 재요청
-        </span>
-      );
-    }
-    return null;
-  }
+  useEffect(() => {
+    if (view === "history") void loadHistoryLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, team]);
 
   const nameOf = (id: number | null) =>
     members.find((m) => m.user_id === id)?.name ?? "미지정";
@@ -327,6 +217,19 @@ export default function TasksPage() {
       ? sortedTasks.filter((t) => t.assignee_id === currentUser?.id)
       : sortedTasks;
 
+  const listFilteredTasks = (() => {
+    const base =
+      filter === "mine"
+        ? tasks.filter((t) => t.assignee_id === currentUser?.id)
+        : [...tasks];
+    if (listSort === "newest") return base.sort((a, b) => b.id - a.id);
+    if (listSort === "oldest") return base.sort((a, b) => a.id - b.id);
+    return base.sort((a, b) => {
+      const d = (b.difficulty ?? 1) - (a.difficulty ?? 1);
+      return d !== 0 ? d : b.id - a.id;
+    });
+  })();
+
   useEffect(() => {
     requestAnimationFrame(() => {
       document
@@ -337,8 +240,8 @@ export default function TasksPage() {
     });
   }, [done, total]);
 
-  const canEdit = (t: ActionItem) =>
-    !t.assignee_id || t.assignee_id === currentUser?.id;
+  // 누구든 수정 가능 (권한은 서버에서 팀 멤버십으로 검증)
+  const canEdit = (_t: ActionItem) => true;
 
   function openEdit(task: ActionItem) {
     setEditTarget(task);
@@ -358,44 +261,33 @@ export default function TasksPage() {
       setEditTime("");
     }
     setEditDifficulty(task.difficulty ?? 2);
-    setEditReason("");
+    setEditStatus(API_TO_STATUS[task.status]);
   }
 
-  async function submitChangeRequest() {
+  async function saveEdit() {
     if (!editTarget || editSaving) return;
 
     const body: Record<string, unknown> = {};
-    let hasChange = false;
-
     if (editDesc.trim() !== editTarget.description) {
       if (!editDesc.trim()) {
         showToast("태스크 이름을 입력해 주세요", "error");
         return;
       }
-      body.requested_description = editDesc.trim();
-      hasChange = true;
+      body.description = editDesc.trim();
     }
-
-    const newDiff = editDifficulty;
-    if (newDiff !== (editTarget.difficulty ?? 2)) {
-      body.requested_difficulty = newDiff;
-      hasChange = true;
-    }
-
+    if (editDifficulty !== (editTarget.difficulty ?? 2))
+      body.difficulty = editDifficulty;
     const newAssigneeId = editAssignee ? Number(editAssignee) : null;
-    if (newAssigneeId !== (editTarget.assignee_id ?? null)) {
-      body.requested_assignee_id = newAssigneeId === null ? -1 : newAssigneeId;
-      hasChange = true;
-    }
-
+    if (newAssigneeId !== (editTarget.assignee_id ?? null))
+      body.assignee_id = newAssigneeId;
     const newDue = editDue
       ? new Date(`${editDue}T${editTime || "23:59"}`)
       : null;
     const origDue = editTarget.due_date ? new Date(editTarget.due_date) : null;
-    if ((newDue?.getTime() ?? null) !== (origDue?.getTime() ?? null)) {
-      if (newDue) body.requested_due_date = newDue.toISOString();
-      hasChange = true;
-    }
+    if ((newDue?.getTime() ?? null) !== (origDue?.getTime() ?? null))
+      body.due_date = newDue?.toISOString() ?? undefined;
+    if (editStatus !== API_TO_STATUS[editTarget.status])
+      body.status = STATUS_TO_API[editStatus];
 
     // 세부사항은 점수에 영향 없는 메모 → 승인 없이 즉시 반영
     const detailChanged = editDetail.trim() !== (editTarget.detail ?? "");
@@ -446,12 +338,10 @@ export default function TasksPage() {
   async function doSendRequest(taskId: number, body: Record<string, unknown>) {
     setEditSaving(true);
     try {
-      await apiPost(`/action-items/${taskId}/extension`, body);
+      await apiPatch(`/action-items/${editTarget.id}`, body);
       setEditTarget(null);
-      setConfirmOverwrite(false);
-      setPendingRequestBody(null);
-      await loadExtensions();
-      showToast("수정 요청을 보냈어요. 팀장 승인을 기다려 주세요");
+      showToast("태스크가 수정되었습니다");
+      await load();
     } catch (e) {
       showToast((e as Error).message, "error");
     } finally {
@@ -459,23 +349,15 @@ export default function TasksPage() {
     }
   }
 
-  async function requestDeletion() {
+  async function deleteTask() {
     if (!editTarget || deleting) return;
-    if (!deleteReason.trim()) {
-      showToast("삭제 사유를 입력해 주세요", "error");
-      return;
-    }
     setDeleting(true);
     try {
-      await apiPost(`/action-items/${editTarget.id}/extension`, {
-        type: "delete",
-        reason: deleteReason.trim(),
-      });
+      await apiDelete(`/action-items/${editTarget.id}`);
       setConfirmDelete(false);
-      setDeleteReason("");
       setEditTarget(null);
-      await loadExtensions();
-      showToast("삭제 요청을 보냈어요. 팀장 승인을 기다려 주세요");
+      showToast("태스크가 삭제되었습니다");
+      await load();
     } catch (e) {
       showToast((e as Error).message, "error");
     } finally {
@@ -483,11 +365,48 @@ export default function TasksPage() {
     }
   }
 
+  async function loadHistoryLogs() {
+    if (!team) return;
+    setHistoryLoading(true);
+    try {
+      const data = await apiGet<ActionItemLog[]>(
+        `/action-items/logs?team_id=${team.id}`,
+      );
+      setHistoryLogs(data);
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function loadLogs(task: ActionItem) {
+    setLogsTarget(task);
+    setLogs([]);
+    setLogsLoading(true);
+    try {
+      const data = await apiGet<ActionItemLog[]>(
+        `/action-items/${task.id}/logs`,
+      );
+      setLogs(data);
+    } catch (e) {
+      showToast((e as Error).message, "error");
+    } finally {
+      setLogsLoading(false);
+    }
+  }
+
   async function changeStatus(task: ActionItem, status: Status) {
     const prev = tasks;
     setTasks((ts) =>
       ts.map((t) =>
-        t.id === task.id ? { ...t, status: STATUS_TO_API[status] } : t,
+        t.id === task.id
+          ? {
+              ...t,
+              status: STATUS_TO_API[status],
+              completed_at: status === "완료" ? new Date().toISOString() : null,
+            }
+          : t,
       ),
     );
     try {
@@ -647,36 +566,68 @@ export default function TasksPage() {
     <div>
       <div className="task-top" data-tour="tk-controls">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div className="view-toggle" data-tour="tk-views">
-            <button
-              className={`vt ${view === "board" ? "active" : ""}`}
-              onClick={() => setView("board")}
-            >
-              <i className="ti ti-layout-columns" /> 보드
-            </button>
-            <button
-              className={`vt ${view === "list" ? "active" : ""}`}
-              onClick={() => setView("list")}
-            >
-              <i className="ti ti-list" /> 목록
-            </button>
-          </div>
-          <div className="view-toggle">
-            <button
-              className={`vt ${filter === "all" ? "active" : ""}`}
-              onClick={() => setFilter("all")}
-            >
-              전체
-            </button>
-            <button
-              className={`vt ${filter === "mine" ? "active" : ""}`}
-              onClick={() => setFilter("mine")}
-            >
-              내 태스크
-            </button>
-          </div>
+          {view !== "history" && (
+            <>
+              <div className="view-toggle">
+                <button
+                  className={`vt ${view === "board" ? "active" : ""}`}
+                  onClick={() => setView("board")}
+                >
+                  <i className="ti ti-layout-columns" /> 보드
+                </button>
+                <button
+                  className={`vt ${view === "list" ? "active" : ""}`}
+                  onClick={() => setView("list")}
+                >
+                  <i className="ti ti-list" /> 목록
+                </button>
+              </div>
+              <div className="view-toggle">
+                <button
+                  className={`vt ${filter === "all" ? "active" : ""}`}
+                  onClick={() => setFilter("all")}
+                >
+                  전체
+                </button>
+                <button
+                  className={`vt ${filter === "mine" ? "active" : ""}`}
+                  onClick={() => setFilter("mine")}
+                >
+                  내 태스크
+                </button>
+              </div>
+              {view === "list" && (
+                <div className="view-toggle">
+                  <button
+                    className={`vt ${listSort === "newest" ? "active" : ""}`}
+                    onClick={() => setListSort("newest")}
+                  >
+                    최신순
+                  </button>
+                  <button
+                    className={`vt ${listSort === "difficulty" ? "active" : ""}`}
+                    onClick={() => setListSort("difficulty")}
+                  >
+                    난이도순
+                  </button>
+                  <button
+                    className={`vt ${listSort === "oldest" ? "active" : ""}`}
+                    onClick={() => setListSort("oldest")}
+                  >
+                    오래된순
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            className={`btn btn-sm${view === "history" ? " btn-consented" : ""}`}
+            onClick={() => setView(view === "history" ? "board" : "history")}
+          >
+            <i className="ti ti-history" /> 이력
+          </button>
           {team?.my_role === "leader" && (
             <button className="btn btn-sm" onClick={shareTaskStatus}>
               <i className="ti ti-share" /> 공유하기
@@ -804,79 +755,94 @@ export default function TasksPage() {
                             className={`av ${avOf(t.assignee_id)} av-sm`}
                             style={{ width: 20, height: 20, fontSize: 9 }}
                           >
-                            {who[0]}
+                            {t.description}
+                          </div>
+                          <span className="tc-diff">
+                            {"★".repeat(t.difficulty ?? 1)}
+                            <span className="tc-diff-off">
+                              {"★".repeat(3 - (t.difficulty ?? 1))}
+                            </span>
                           </span>
-                          {who}
-                        </span>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "flex-end",
-                            gap: 2,
-                          }}
-                        >
-                          {dd.label && (
-                            <div
-                              className="tc-due"
-                              style={{
-                                color: danger
-                                  ? "var(--coral)"
-                                  : warn
-                                    ? "var(--amber)"
-                                    : "var(--text-soft)",
-                              }}
+                        </div>
+                        <div className="tc-foot">
+                          <span className="tc-who">
+                            <span
+                              className={`av ${avOf(t.assignee_id)} av-sm`}
+                              style={{ width: 20, height: 20, fontSize: 9 }}
                             >
-                              <i className="ti ti-calendar" />
-                              {dd.label}
-                              {dd.timeLabel && (
-                                <span
-                                  style={{ fontWeight: 500, marginLeft: 2 }}
-                                >
-                                  {dd.timeLabel}
-                                </span>
-                              )}
-                              {dd.dDay && (
-                                <span
-                                  style={{ fontWeight: 700, marginLeft: 4 }}
-                                >
-                                  {dd.dDay}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {status === "완료" && t.completed_at && (
-                            <div
-                              className="tc-due"
-                              style={{ color: "var(--green)" }}
-                            >
-                              <i className="ti ti-check" />
-                              {fmtCompleted(t.completed_at)} 완료
-                              {t.due_date &&
-                                new Date(t.completed_at) >
-                                  new Date(t.due_date) && (
+                              {who[0]}
+                            </span>
+                            {who}
+                          </span>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "flex-end",
+                              gap: 2,
+                            }}
+                          >
+                            {dd.label && (
+                              <div
+                                className="tc-due"
+                                style={{
+                                  color: danger
+                                    ? "var(--coral)"
+                                    : warn
+                                      ? "var(--amber)"
+                                      : "var(--text-soft)",
+                                }}
+                              >
+                                <i className="ti ti-calendar" />
+                                {dd.label}
+                                {dd.timeLabel && (
                                   <span
-                                    style={{
-                                      marginLeft: 4,
-                                      fontSize: 10,
-                                      fontWeight: 700,
-                                      color: "var(--coral)",
-                                      background: "var(--coral-soft)",
-                                      borderRadius: 4,
-                                      padding: "1px 5px",
-                                    }}
+                                    style={{ fontWeight: 500, marginLeft: 2 }}
                                   >
-                                    기한 초과
+                                    {dd.timeLabel}
                                   </span>
                                 )}
-                            </div>
-                          )}
+                                {dd.dDay && (
+                                  <span
+                                    style={{ fontWeight: 700, marginLeft: 4 }}
+                                  >
+                                    {dd.dDay}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {status === "완료" && t.completed_at && (
+                              <div
+                                className="tc-due"
+                                style={{ color: "var(--green)" }}
+                              >
+                                <i className="ti ti-check" />
+                                {fmtCompleted(t.completed_at)} 완료
+                                {t.due_date &&
+                                  new Date(t.completed_at) >
+                                    new Date(t.due_date) && (
+                                    <span
+                                      style={{
+                                        marginLeft: 4,
+                                        fontSize: 10,
+                                        fontWeight: 700,
+                                        color: "var(--coral)",
+                                        background: "var(--coral-soft)",
+                                        borderRadius: 4,
+                                        padding: "1px 5px",
+                                      }}
+                                    >
+                                      기한 초과
+                                    </span>
+                                  )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      {renderExtension(t)}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
                 <button className="add-col" onClick={() => setModalOpen(true)}>
                   <i className="ti ti-plus" /> 추가
                 </button>
@@ -889,7 +855,7 @@ export default function TasksPage() {
       {/* 목록 뷰 */}
       {view === "list" && (
         <div>
-          {filteredTasks.map((t) => {
+          {listFilteredTasks.map((t) => {
             const status = API_TO_STATUS[t.status];
             const dd = dueState(t.due_date);
             const danger = status !== "완료" && dd.danger;
@@ -986,11 +952,10 @@ export default function TasksPage() {
                     </span>
                   </span>
                 </div>
-                {renderExtension(t)}
               </div>
             );
           })}
-          {filteredTasks.length === 0 && (
+          {listFilteredTasks.length === 0 && (
             <div
               style={{ padding: 18, fontSize: 13, color: "var(--text-soft)" }}
             >
@@ -999,6 +964,117 @@ export default function TasksPage() {
                 : "등록된 태스크가 없습니다. 태스크를 추가해 보세요."}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 이력 뷰 */}
+      {view === "history" && (
+        <div className="board">
+          {(["edit", "delete"] as const).map((action) => {
+            const colLogs = historyLogs.filter((l) => l.action === action);
+            const label = action === "edit" ? "수정" : "삭제";
+            const color = action === "edit" ? "var(--blue)" : "var(--coral)";
+            return (
+              <div key={action} className="board-col">
+                <div className="col-head">
+                  <span className="col-dot" style={{ background: color }} />
+                  <span className="col-title">{label}</span>
+                  <span className="col-cnt">{colLogs.length}</span>
+                </div>
+                <div className="col-cards">
+                  {historyLoading ? (
+                    <div
+                      style={{
+                        padding: 16,
+                        fontSize: 13,
+                        color: "var(--text-soft)",
+                      }}
+                    >
+                      불러오는 중…
+                    </div>
+                  ) : colLogs.length === 0 ? (
+                    <div
+                      style={{
+                        padding: 16,
+                        fontSize: 13,
+                        color: "var(--text-soft)",
+                      }}
+                    >
+                      {label} 이력이 없습니다.
+                    </div>
+                  ) : (
+                    colLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="tcard"
+                        style={{ cursor: "default" }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--text-mut)",
+                            marginBottom: 6,
+                            display: "flex",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <span style={{ fontWeight: 600, color }}>
+                            {log.actor_name}
+                          </span>
+                          <span>{fmtLogTime(log.created_at)}</span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            marginBottom: action === "edit" ? 8 : 0,
+                          }}
+                        >
+                          {log.task_description}
+                        </div>
+                        {action === "edit" &&
+                          (log.changes ?? []).map((c, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                fontSize: 11.5,
+                                color: "var(--text-soft)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
+                                marginTop: 3,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  color: "var(--text-main)",
+                                  minWidth: 36,
+                                }}
+                              >
+                                {fieldLabel(c.field)}
+                              </span>
+                              <span style={{ color: "var(--coral)" }}>
+                                {formatVal(c.field, c.from)}
+                              </span>
+                              <i
+                                className="ti ti-arrow-right"
+                                style={{ fontSize: 10 }}
+                              />
+                              <span style={{ color: "var(--green)" }}>
+                                {formatVal(c.field, c.to)}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {/* 세 번째 빈 컬럼 자리 — 보드 3열 레이아웃 유지 */}
+          <div />
         </div>
       )}
 
@@ -1132,22 +1208,22 @@ export default function TasksPage() {
               >
                 삭제
               </button>
+              <button className="btn" onClick={() => void loadLogs(editTarget)}>
+                <i className="ti ti-history" /> 이력
+              </button>
               <button className="btn" onClick={() => setEditTarget(null)}>
                 취소
               </button>
               <button
                 className="btn btn-primary"
-                onClick={() => void submitChangeRequest()}
+                onClick={() => void saveEdit()}
                 disabled={editSaving}
               >
-                {editSaving ? "요청 중…" : "수정 요청"}
+                {editSaving ? "저장 중…" : "저장"}
               </button>
             </>
           }
         >
-          <div className="modal-sub">
-            팀장이 수락하면 변경 사항이 적용됩니다.
-          </div>
           <div className="field">
             <label className="field-label">태스크 이름</label>
             <input
@@ -1222,88 +1298,38 @@ export default function TasksPage() {
             </div>
           </div>
           <div className="field">
-            <label className="field-label">수정 사유</label>
-            <textarea
-              className="input"
-              rows={3}
-              placeholder="예) 일정이 변경되어 마감일 조정이 필요합니다."
-              value={editReason}
-              onChange={(e) => setEditReason(e.target.value)}
-            />
+            <label className="field-label">상태</label>
+            <div className="chip-row">
+              {(["할 일", "진행 중", "완료"] as Status[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`chip-opt ${STATUS_CHIP_CLS[s]} ${editStatus === s ? "active" : ""}`}
+                  onClick={() => setEditStatus(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         </Modal>
       )}
 
-      {/* 기존 요청 덮어쓰기 확인 모달 */}
-      {confirmOverwrite && editTarget && pendingRequestBody && (
+      {/* 삭제 확인 모달 */}
+      {confirmDelete && editTarget && (
         <ConfirmModal
-          title="기존 요청 덮어쓰기"
+          title="태스크 삭제"
           message={
             <>
-              <strong>{editTarget.description}</strong>에 아직 처리되지 않은
-              수정 요청이 있습니다.
-              <br />새 요청으로 덮어쓸까요?
+              <strong>{editTarget.description}</strong> 태스크를 삭제할까요?
+              <br />이 작업은 되돌릴 수 없습니다.
             </>
           }
-          confirmLabel="덮어쓰기"
-          busy={editSaving}
-          onConfirm={() =>
-            void doSendRequest(editTarget.id, pendingRequestBody)
-          }
-          onClose={() => {
-            setConfirmOverwrite(false);
-            setPendingRequestBody(null);
-          }}
+          confirmLabel="삭제"
+          busy={deleting}
+          onConfirm={() => void deleteTask()}
+          onClose={() => setConfirmDelete(false)}
         />
-      )}
-
-      {/* 삭제 요청 모달 */}
-      {confirmDelete && editTarget && (
-        <Modal
-          title="태스크 삭제 요청"
-          onClose={() => {
-            setConfirmDelete(false);
-            setDeleteReason("");
-          }}
-          actions={
-            <>
-              <button
-                className="btn"
-                onClick={() => {
-                  setConfirmDelete(false);
-                  setDeleteReason("");
-                }}
-              >
-                취소
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={deleting}
-                onClick={() => void requestDeletion()}
-              >
-                삭제 요청 보내기
-              </button>
-            </>
-          }
-        >
-          <p style={{ marginBottom: 12, color: "var(--text-soft)" }}>
-            <strong style={{ color: "var(--text-main)" }}>
-              {editTarget.description}
-            </strong>{" "}
-            태스크의 삭제를 팀장에게 요청합니다.
-          </p>
-          <div className="field">
-            <label className="field-label">삭제 사유</label>
-            <textarea
-              className="input"
-              rows={3}
-              placeholder="삭제가 필요한 이유를 입력해 주세요"
-              value={deleteReason}
-              onChange={(e) => setDeleteReason(e.target.value)}
-              style={{ resize: "none" }}
-            />
-          </div>
-        </Modal>
       )}
 
       {/* 완료 → 다른 상태 변경 경고 모달 */}
@@ -1433,142 +1459,119 @@ export default function TasksPage() {
         </Modal>
       )}
 
-      {viewingExt && (
+      {/* 수정/삭제 이력 모달 */}
+      {logsTarget && (
         <Modal
-          title="수정 요청 내용"
-          onClose={() => setViewingExt(null)}
+          title={`이력 — ${logsTarget.description}`}
+          className="modal-wide"
+          onClose={() => setLogsTarget(null)}
           actions={
-            <button className="btn" onClick={() => setViewingExt(null)}>
+            <button className="btn" onClick={() => setLogsTarget(null)}>
               닫기
             </button>
           }
         >
-          {/* 요청자 + 태스크 헤더 */}
-          <div className="ext-req-header">
-            <div className="ext-req-who">
-              <i className="ti ti-user-circle" />
-              <strong>{viewingExt.requester_name}</strong>님의{" "}
-              {viewingExt.type === "delete" ? "삭제" : "수정"} 요청
-            </div>
-            <div className="ext-req-task">{viewingExt.task_description}</div>
-          </div>
-
-          {/* 삭제 요청 안내 */}
-          {viewingExt.type === "delete" && (
+          {logsLoading ? (
             <div
-              className="ext-changes"
-              style={{ borderColor: "var(--coral)", marginBottom: 12 }}
+              style={{
+                padding: "24px 0",
+                textAlign: "center",
+                color: "var(--text-soft)",
+                fontSize: 13,
+              }}
             >
-              <div
-                className="ext-changes-title"
-                style={{
-                  background: "var(--coral-soft)",
-                  color: "var(--coral)",
-                }}
-              >
-                <i className="ti ti-trash" /> 태스크 삭제 요청
-              </div>
-              <div className="ext-diff-row">
-                이 태스크를 완전히 삭제하길 요청합니다.
-              </div>
+              불러오는 중…
+            </div>
+          ) : logs.length === 0 ? (
+            <div
+              style={{
+                padding: "24px 0",
+                textAlign: "center",
+                color: "var(--text-soft)",
+                fontSize: 13,
+              }}
+            >
+              수정/삭제 이력이 없습니다.
+            </div>
+          ) : (
+            <div className="log-list">
+              {logs.map((log) => (
+                <div key={log.id} className="log-item">
+                  <div className="log-meta">
+                    <span
+                      className={`log-badge ${log.action === "delete" ? "log-badge-delete" : "log-badge-edit"}`}
+                    >
+                      {log.action === "delete" ? "삭제" : "수정"}
+                    </span>
+                    <span className="log-actor">{log.actor_name}</span>
+                    <span className="log-date">
+                      {fmtLogTime(log.created_at)}
+                    </span>
+                  </div>
+                  {log.action === "delete" ? (
+                    <div className="log-desc">
+                      <strong>{log.task_description}</strong> 태스크를
+                      삭제했습니다.
+                    </div>
+                  ) : (
+                    <div className="log-changes">
+                      {(log.changes ?? []).map((c, i) => (
+                        <div key={i} className="log-change-row">
+                          <span className="log-field">
+                            {fieldLabel(c.field)}
+                          </span>
+                          <span className="log-from">
+                            {formatVal(c.field, c.from)}
+                          </span>
+                          <i
+                            className="ti ti-arrow-right"
+                            style={{ fontSize: 11, color: "var(--text-mut)" }}
+                          />
+                          <span className="log-to">
+                            {formatVal(c.field, c.to)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
-
-          {/* 변경 항목 diff */}
-          {viewingExt.type !== "delete" &&
-            (viewingExt.requested_description ||
-              viewingExt.requested_difficulty != null ||
-              viewingExt.requested_assignee_id != null ||
-              viewingExt.requested_due_date) && (
-              <div className="ext-changes">
-                <div className="ext-changes-title">변경 내용</div>
-                {viewingExt.requested_description && (
-                  <div className="ext-diff-row">
-                    <span className="ext-diff-label">이름</span>
-                    <div className="ext-diff-val">
-                      <span className="ext-diff-before">
-                        {viewingExt.task_description}
-                      </span>
-                      <i className="ti ti-arrow-right ext-diff-arrow" />
-                      <span className="ext-diff-after">
-                        {viewingExt.requested_description}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {viewingExt.requested_difficulty != null && (
-                  <div className="ext-diff-row">
-                    <span className="ext-diff-label">난이도</span>
-                    <div className="ext-diff-val">
-                      <span className="ext-diff-before">
-                        {"★".repeat(viewingExt.current_difficulty ?? 1)}
-                      </span>
-                      <i className="ti ti-arrow-right ext-diff-arrow" />
-                      <span className="ext-diff-after">
-                        {"★".repeat(viewingExt.requested_difficulty)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {viewingExt.requested_assignee_id != null && (
-                  <div className="ext-diff-row">
-                    <span className="ext-diff-label">담당자</span>
-                    <div className="ext-diff-val">
-                      <span className="ext-diff-before">
-                        {viewingExt.current_assignee_id != null
-                          ? (members.find(
-                              (m) =>
-                                m.user_id === viewingExt.current_assignee_id,
-                            )?.name ?? "알 수 없음")
-                          : "미지정"}
-                      </span>
-                      <i className="ti ti-arrow-right ext-diff-arrow" />
-                      <span className="ext-diff-after">
-                        {viewingExt.requested_assignee_id === -1
-                          ? "미지정"
-                          : (members.find(
-                              (m) =>
-                                m.user_id === viewingExt.requested_assignee_id,
-                            )?.name ?? "알 수 없음")}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {viewingExt.requested_due_date && (
-                  <div className="ext-diff-row">
-                    <span className="ext-diff-label">마감일</span>
-                    <div className="ext-diff-val">
-                      <span className="ext-diff-before">
-                        {viewingExt.current_due_date
-                          ? new Date(
-                              viewingExt.current_due_date,
-                            ).toLocaleDateString("ko-KR")
-                          : "없음"}
-                      </span>
-                      <i className="ti ti-arrow-right ext-diff-arrow" />
-                      <span className="ext-diff-after">
-                        {new Date(
-                          viewingExt.requested_due_date,
-                        ).toLocaleDateString("ko-KR")}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-          {/* 사유 */}
-          <div className="ext-reason-box">
-            <div className="ext-reason-label">
-              <i className="ti ti-message-circle" />
-              {viewingExt.type === "delete" ? "삭제 사유" : "수정 사유"}
-            </div>
-            <div className="ext-reason-body">
-              {viewingExt.reason || "(작성된 사유가 없습니다)"}
-            </div>
-          </div>
         </Modal>
       )}
     </div>
   );
+}
+
+function fmtLogTime(iso: string): string {
+  const kst = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000);
+  const m = kst.getUTCMonth() + 1;
+  const d = kst.getUTCDate();
+  const h = kst.getUTCHours();
+  const min = String(kst.getUTCMinutes()).padStart(2, "0");
+  const ampm = h < 12 ? "오전" : "오후";
+  const h12 = h % 12 || 12;
+  return `${m}. ${d}. ${ampm} ${h12}:${min}`;
+}
+
+function fieldLabel(field: string): string {
+  const map: Record<string, string> = {
+    description: "이름",
+    difficulty: "난이도",
+    assignee: "담당자",
+    due_date: "마감일",
+    status: "상태",
+  };
+  return map[field] ?? field;
+}
+
+function formatVal(field: string, val: string | null): string {
+  if (val == null) return "없음";
+  if (field === "difficulty") return "★".repeat(Number(val));
+  if (field === "due_date") {
+    const d = new Date(val);
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  }
+  return val;
 }

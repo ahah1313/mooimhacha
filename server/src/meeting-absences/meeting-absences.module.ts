@@ -6,6 +6,7 @@ import { PresenceEvent } from '../entities/presence-event.entity';
 import { MeetingAbsence } from '../entities/meeting-absence.entity';
 import { AbsenceConsent } from '../entities/absence-consent.entity';
 import { User } from '../entities/user.entity';
+import { Team } from '../entities/team.entity';
 import { TeamSettings } from '../entities/team-settings.entity';
 import { TeamsModule } from '../teams/teams.module';
 import { SlackModule } from '../slack/slack.module';
@@ -21,6 +22,7 @@ import { MeetingAbsencesService } from './meeting-absences.service';
       MeetingAbsence,
       AbsenceConsent,
       User,
+      Team,
       TeamSettings,
     ]),
     TeamsModule,

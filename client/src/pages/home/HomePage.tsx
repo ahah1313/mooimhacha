@@ -7,12 +7,12 @@ import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useTourStore } from "@/stores/tourStore";
 import { HOME_STEPS } from "@/components/tour/steps";
 import Card from "@/components/Card";
+import Modal from "@/components/Modal";
 import ProfileEditModal from "@/components/ProfileEditModal";
 import type {
   ActionItem,
   Meeting,
   TeamContribution,
-  TaskExtension,
   PendingConsent,
 } from "@/lib/types";
 import "@/styles/home.css";
@@ -36,7 +36,7 @@ interface UpcomingMeeting extends Meeting {
 }
 
 interface TodoItem {
-  type: "extension" | "consent";
+  type: "consent";
   team_id: number;
   team_name: string;
   label: string;
@@ -101,6 +101,7 @@ export default function HomePage() {
   );
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [joinCode, setJoinCode] = useState("");
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -131,7 +132,7 @@ export default function HomePage() {
     void Promise.allSettled(
       teams.map(async (t) => {
         const badgeCls = t.my_role === "leader" ? "b-green" : "b-blue";
-        const [ts, ms, cs, exts, consents] = await Promise.allSettled([
+        const [ts, ms, cs, consents] = await Promise.allSettled([
           apiGet<ActionItem[]>(
             `/action-items?team_id=${t.id}&assignee_id=${user.id}&confirmed=true`,
           ),
@@ -139,11 +140,6 @@ export default function HomePage() {
           apiGet<{ members: TeamContribution[] }>(
             `/teams/${t.id}/contributions`,
           ),
-          t.my_role === "leader"
-            ? apiGet<TaskExtension[]>(
-                `/teams/${t.id}/extensions?status=pending`,
-              )
-            : Promise.resolve([] as TaskExtension[]),
           apiGet<PendingConsent[]>(`/teams/${t.id}/pending-consents`),
         ]);
         return {
@@ -170,15 +166,6 @@ export default function HomePage() {
                   ?.composite_score ?? null)
               : null,
           todos: [
-            ...(exts.status === "fulfilled"
-              ? exts.value.map((e) => ({
-                  type: "extension" as const,
-                  team_id: t.id,
-                  team_name: t.name,
-                  label: `${e.requester_name} · ${e.task_description}`,
-                  created_at: e.created_at,
-                }))
-              : []),
             ...(consents.status === "fulfilled"
               ? consents.value.map((c) => ({
                   type: "consent" as const,
@@ -286,6 +273,7 @@ export default function HomePage() {
       });
       showToast(`${data.name} 참가 완료`);
       setJoinCode("");
+      setJoinModalOpen(false);
       fetchTeams();
     } catch (err) {
       showToast((err as Error).message || "참가 요청 실패");
@@ -311,6 +299,9 @@ export default function HomePage() {
           무임<em>하차</em>
         </div>
         <div className="tn-right">
+          <button className="btn btn-sm" onClick={() => setJoinModalOpen(true)}>
+            <i className="ti ti-key" /> 그룹 참가
+          </button>
           <button
             className="btn btn-primary btn-sm"
             onClick={() => navigate("/onboarding")}
@@ -495,23 +486,6 @@ export default function HomePage() {
                 <i className="ti ti-layout-grid" /> 내 현황
               </div>
             </div>
-            <div className="join-box" style={{ marginBottom: 14 }}>
-              <div className="join-label">
-                <i className="ti ti-key" /> 초대코드로 참가
-              </div>
-              <div className="join-row">
-                <input
-                  className="join-input"
-                  placeholder="ABCD1234"
-                  maxLength={8}
-                  value={joinCode}
-                  onChange={(e) => fmtCode(e.target.value)}
-                />
-                <button className="btn btn-primary" onClick={joinGroup}>
-                  참가하기
-                </button>
-              </div>
-            </div>
             {todos.length > 0 && (
               <Card
                 icon="ti ti-bell-ringing"
@@ -526,19 +500,12 @@ export default function HomePage() {
                       className="activity-row"
                       style={{ cursor: "pointer" }}
                       onClick={() =>
-                        navigate(
-                          `/dashboard/${item.team_id}/${item.type === "extension" ? "tasks" : "meeting"}`,
-                        )
+                        navigate(`/dashboard/${item.team_id}/meeting`)
                       }
                     >
                       <div
                         className="act-dot"
-                        style={{
-                          background:
-                            item.type === "extension"
-                              ? "var(--amber)"
-                              : "var(--blue)",
-                        }}
+                        style={{ background: "var(--blue)" }}
                       />
                       <div className="act-body" style={{ flex: 1 }}>
                         <div style={{ fontSize: 12.5, fontWeight: 600 }}>
@@ -547,10 +514,7 @@ export default function HomePage() {
                         <div
                           style={{ fontSize: 11, color: "var(--text-soft)" }}
                         >
-                          {item.team_name} ·{" "}
-                          {item.type === "extension"
-                            ? "기한 연장 요청"
-                            : "결석 사유 동의"}
+                          {item.team_name} · 결석 사유 동의
                         </div>
                       </div>
                       <div className="act-time">{relTime(item.created_at)}</div>
@@ -705,6 +669,50 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+      {joinModalOpen && (
+        <Modal
+          title="초대코드로 참가"
+          onClose={() => {
+            setJoinModalOpen(false);
+            setJoinCode("");
+          }}
+          actions={
+            <>
+              <button
+                className="btn"
+                onClick={() => {
+                  setJoinModalOpen(false);
+                  setJoinCode("");
+                }}
+              >
+                취소
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => void joinGroup()}
+              >
+                참가하기
+              </button>
+            </>
+          }
+        >
+          <div className="field">
+            <label className="field-label">초대코드</label>
+            <input
+              className="input"
+              placeholder="ABCD1234"
+              maxLength={8}
+              value={joinCode}
+              onChange={(e) => fmtCode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing)
+                  void joinGroup();
+              }}
+              autoFocus
+            />
+          </div>
+        </Modal>
+      )}
       {profileEditOpen && (
         <ProfileEditModal onClose={() => setProfileEditOpen(false)} />
       )}

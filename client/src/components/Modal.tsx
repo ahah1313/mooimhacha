@@ -5,6 +5,7 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   actions: ReactNode;
+  className?: string;
 }
 
 export default function Modal({
@@ -12,6 +13,7 @@ export default function Modal({
   onClose,
   children,
   actions,
+  className,
 }: ModalProps) {
   return (
     <div
@@ -20,7 +22,7 @@ export default function Modal({
       // 모달 내부 클릭이 배경까지 버블링되어도 닫히지 않도록 함.
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="modal">
+      <div className={`modal${className ? ` ${className}` : ""}`}>
         <div className="modal-ttl">
           {title}
           <button className="modal-close" onClick={onClose}>

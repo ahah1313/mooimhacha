@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notification } from '../entities/notification.entity';
 import { Meeting } from '../entities/meeting.entity';
+import { Team } from '../entities/team.entity';
 import { TeamMembership } from '../entities/team-membership.entity';
 import { User } from '../entities/user.entity';
 import { ActionItem } from '../entities/action-item.entity';
@@ -15,6 +16,7 @@ import { NotificationsService } from './notifications.service';
     TypeOrmModule.forFeature([
       Notification,
       Meeting,
+      Team,
       TeamMembership,
       User,
       ActionItem,

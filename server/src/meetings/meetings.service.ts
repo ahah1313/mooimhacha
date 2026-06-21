@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource, FindOptionsWhere, In, Repository } from 'typeorm';
 import { Meeting } from '../entities/meeting.entity';
+import { Team } from '../entities/team.entity';
 import { Agenda } from '../entities/agenda.entity';
 import { Utterance } from '../entities/utterance.entity';
 import { Decision } from '../entities/decision.entity';
@@ -166,14 +167,59 @@ export class MeetingsService {
   }
 
   private async notifyMeetingStarted(meeting: Meeting): Promise<void> {
-    const settings = await this.settingsRepo.findOne({
-      where: { team_id: meeting.team_id },
-    });
+    const [settings, team] = await Promise.all([
+      this.settingsRepo.findOne({ where: { team_id: meeting.team_id } }),
+      this.dataSource
+        .getRepository(Team)
+        .findOne({ where: { id: meeting.team_id } }),
+    ]);
     if (!settings?.slack_bot_token || !settings.slack_channel_id) return;
     await this.slackService.sendChannelMessage(
       settings.slack_bot_token,
       settings.slack_channel_id,
-      `🚀 [${meeting.topic ?? '회의'}] 지금 바로 시작됐습니다! 참여해주세요`,
+      [
+        `🚀 *회의 시작* — ${team?.name ?? '팀'}`,
+        `> *${meeting.topic ?? '회의'}*`,
+        `> 지금 바로 참여해주세요!`,
+      ].join('\n'),
+    );
+  }
+
+  private async notifyMeetingEnded(meeting: Meeting): Promise<void> {
+    const [settings, team, decisions, actions] = await Promise.all([
+      this.settingsRepo.findOne({ where: { team_id: meeting.team_id } }),
+      this.dataSource
+        .getRepository(Team)
+        .findOne({ where: { id: meeting.team_id } }),
+      this.decisionRepo.find({ where: { meeting_id: meeting.id } }),
+      this.actionRepo.find({ where: { meeting_id: meeting.id } }),
+    ]);
+    if (!settings?.slack_bot_token || !settings.slack_channel_id) return;
+
+    const lines: string[] = [
+      `🏁 *회의 종료* — ${team?.name ?? '팀'}`,
+      `> *${meeting.topic ?? '회의'}*`,
+    ];
+
+    if (decisions.length > 0) {
+      lines.push(`\n📋 *결정 사항* (${decisions.length}개)`);
+      decisions.forEach((d) => lines.push(`> • ${d.content}`));
+    }
+
+    if (actions.length > 0) {
+      lines.push(`\n✅ *액션 아이템* (${actions.length}개)`);
+      actions.forEach((a) => {
+        const due = a.due_date
+          ? ` — ${new Date(a.due_date).toLocaleDateString('ko-KR')}`
+          : '';
+        lines.push(`> • ${a.description}${due}`);
+      });
+    }
+
+    await this.slackService.sendChannelMessage(
+      settings.slack_bot_token,
+      settings.slack_channel_id,
+      lines.join('\n'),
     );
   }
 
@@ -199,6 +245,7 @@ export class MeetingsService {
       meeting_id: meeting.id,
       team_id: meeting.team_id,
     });
+    void this.notifyMeetingEnded(meeting);
 
     try {
       await this.finalizeAgendas(meeting.id, endedAt, meeting.t0_timestamp);
@@ -337,6 +384,12 @@ export class MeetingsService {
         groups: unassigned,
       });
     }
+    // 발화가 없는 섹션은 끝으로, 나머지는 첫 발화 시각 기준 오름차순
+    sections.sort((a, b) => {
+      const aStart = a.groups[0]?.started_at_offset_ms ?? Infinity;
+      const bStart = b.groups[0]?.started_at_offset_ms ?? Infinity;
+      return aStart - bStart;
+    });
     return { meeting_id: meeting.id, sections };
   }
 

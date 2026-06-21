@@ -11,6 +11,7 @@ import { Meeting } from '../entities/meeting.entity';
 import { MeetingAbsence } from '../entities/meeting-absence.entity';
 import { AbsenceConsent } from '../entities/absence-consent.entity';
 import { User } from '../entities/user.entity';
+import { Team } from '../entities/team.entity';
 import { TeamSettings } from '../entities/team-settings.entity';
 import { TeamsService } from '../teams/teams.service';
 import { SlackService } from '../slack/slack.service';
@@ -33,6 +34,8 @@ export class MeetingAbsencesService {
     private consentRepo: Repository<AbsenceConsent>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(Team)
+    private teamRepo: Repository<Team>,
     @InjectRepository(TeamSettings)
     private settingsRepo: Repository<TeamSettings>,
     private teamsService: TeamsService,
@@ -367,18 +370,21 @@ export class MeetingAbsencesService {
     userId: number,
     isLate: boolean,
   ): Promise<void> {
-    const settings = await this.settingsRepo.findOne({
-      where: { team_id: meeting.team_id },
-    });
+    const [settings, user, team] = await Promise.all([
+      this.settingsRepo.findOne({ where: { team_id: meeting.team_id } }),
+      this.userRepo.findOne({ where: { id: userId } }),
+      this.teamRepo.findOne({ where: { id: meeting.team_id } }),
+    ]);
     if (!settings?.slack_bot_token || !settings.slack_channel_id) return;
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    const name = user?.name ?? '팀원';
-    const topic = meeting.topic ?? '회의';
     const label = isLate ? '지각' : '결석';
     await this.slackService.sendChannelMessage(
       settings.slack_bot_token,
       settings.slack_channel_id,
-      `🔔 ${name}님이 [${topic}] ${label} 사유를 입력했습니다. 동의해주세요!`,
+      [
+        `🔔 *출결 사유 등록* — ${team?.name ?? '팀'}`,
+        `> *${user?.name ?? '팀원'}*님이 *${meeting.topic ?? '회의'}* ${label} 사유를 입력했습니다`,
+        `> 확인 후 동의해주세요`,
+      ].join('\n'),
     );
   }
 
@@ -386,13 +392,12 @@ export class MeetingAbsencesService {
     meeting: Meeting,
     absence: MeetingAbsence,
   ): Promise<void> {
-    const settings = await this.settingsRepo.findOne({
-      where: { team_id: meeting.team_id },
-    });
+    const [settings, user, team] = await Promise.all([
+      this.settingsRepo.findOne({ where: { team_id: meeting.team_id } }),
+      this.userRepo.findOne({ where: { id: absence.user_id } }),
+      this.teamRepo.findOne({ where: { id: meeting.team_id } }),
+    ]);
     if (!settings?.slack_bot_token) return;
-    const user = await this.userRepo.findOne({
-      where: { id: absence.user_id },
-    });
     if (!user?.slack_user_id) return;
     const presenceEvents = await this.presenceRepo.find({
       where: [
@@ -415,11 +420,13 @@ export class MeetingAbsencesService {
       settings.late_threshold_minutes ?? 5,
     );
     const label = isLate ? '지각' : '결석';
-    const topic = meeting.topic ?? '회의';
     await this.slackService.sendDm(
       settings.slack_bot_token,
       user.slack_user_id,
-      `✅ [${topic}] ${label} 사유가 승인됐습니다`,
+      [
+        `✅ *출결 사유 승인* — ${team?.name ?? '팀'}`,
+        `> *${meeting.topic ?? '회의'}* ${label} 사유가 승인됐습니다`,
+      ].join('\n'),
     );
   }
 

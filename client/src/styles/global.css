@@ -449,15 +449,22 @@ textarea.input {
 }
 
 /* 스크롤바 */
-.scroll::-webkit-scrollbar {
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+*::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
-.scroll::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 9px;
   border: 2.5px solid transparent;
   background-clip: padding-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* ============================================================
@@ -481,6 +488,9 @@ textarea.input {
 .modal {
   width: 420px;
   max-width: 100%;
+  max-height: min(600px, calc(100vh - 100px));
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -524,9 +534,15 @@ textarea.input {
   color: var(--text-soft);
   margin: 5px 0 16px;
 }
+.modal-wide {
+  width: 520px;
+}
 .modal-body {
   margin-top: 18px;
   margin-bottom: 4px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 .modal-actions {
   display: flex;

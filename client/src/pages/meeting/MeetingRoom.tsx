@@ -72,6 +72,7 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
   const [partialText, setPartialText] = useState("");
   const [myUserId, setMyUserId] = useState<number | null>(null);
   const [recentCollapsed, setRecentCollapsed] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
   const engineRef = useRef<SttEngine | null>(null);
@@ -576,6 +577,27 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
     }
   };
 
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const [m, ag, dec, act] = await Promise.all([
+        apiGet<Meeting>(`/meetings/${meetingId}`),
+        apiGet<Agenda[]>(`/meetings/${meetingId}/agendas`),
+        apiGet<Decision[]>(`/decisions?meeting_id=${meetingId}`),
+        apiGet<ActionItem[]>(`/action-items?team_id=${teamId}`),
+      ]);
+      setMeeting(m);
+      setAgendas(ag);
+      setDecisions(dec);
+      setActions(act);
+    } catch {
+      // 실패는 조용히 무시
+    } finally {
+      setRefreshing(false);
+    }
+  }, [meetingId, teamId, refreshing]);
+
   const handleEnd = async () => {
     if (ending) return;
     if (
@@ -640,6 +662,13 @@ export default function MeetingRoom({ meetingId, teamId }: Props) {
           </span>
         </div>
         <div className="cmp-header__actions">
+          <button
+            onClick={() => void handleRefresh()}
+            disabled={refreshing}
+            title="새로고침"
+          >
+            <i className={`ti ${refreshing ? "ti-loader-2" : "ti-refresh"}`} />
+          </button>
           <button
             className={`cmp-mic-btn ${micOn ? "on" : ""}`}
             onClick={() => void toggleMic()}

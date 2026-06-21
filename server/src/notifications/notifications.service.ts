@@ -9,6 +9,7 @@ import {
   NotificationType,
 } from '../entities/notification.entity';
 import { Meeting } from '../entities/meeting.entity';
+import { Team } from '../entities/team.entity';
 import { TeamMembership } from '../entities/team-membership.entity';
 import { User } from '../entities/user.entity';
 import { ActionItem } from '../entities/action-item.entity';
@@ -25,6 +26,8 @@ export class NotificationsService {
     private notiRepo: Repository<Notification>,
     @InjectRepository(Meeting)
     private meetingRepo: Repository<Meeting>,
+    @InjectRepository(Team)
+    private teamRepo: Repository<Team>,
     @InjectRepository(TeamMembership)
     private membershipRepo: Repository<TeamMembership>,
     @InjectRepository(User)
@@ -163,15 +166,20 @@ export class NotificationsService {
         { action_item_id: task.id },
       );
 
-      const [user, settings] = await Promise.all([
+      const [user, settings, team] = await Promise.all([
         this.userRepo.findOne({ where: { id: task.assignee_id } }),
         this.settingsRepo.findOne({ where: { team_id: task.team_id } }),
+        this.teamRepo.findOne({ where: { id: task.team_id } }),
       ]);
       if (user?.slack_user_id && settings?.slack_bot_token) {
         await this.slackService.sendDm(
           settings.slack_bot_token,
           user.slack_user_id,
-          `⏰ [${task.description}] 마감이 내일입니다`,
+          [
+            `⏰ *태스크 마감 D-1* — ${team?.name ?? '팀'}`,
+            `> ${task.description}`,
+            `> 내일까지 완료해주세요`,
+          ].join('\n'),
         );
       }
     }
@@ -207,14 +215,19 @@ export class NotificationsService {
         );
       }
 
-      const settings = await this.settingsRepo.findOne({
-        where: { team_id: m.team_id },
-      });
+      const [settings, team] = await Promise.all([
+        this.settingsRepo.findOne({ where: { team_id: m.team_id } }),
+        this.teamRepo.findOne({ where: { id: m.team_id } }),
+      ]);
       if (settings?.slack_bot_token && settings.slack_channel_id) {
         await this.slackService.sendChannelMessage(
           settings.slack_bot_token,
           settings.slack_channel_id,
-          `📢 [${m.topic ?? '회의'}] 30분 후 시작됩니다`,
+          [
+            `📢 *회의 30분 전* — ${team?.name ?? '팀'}`,
+            `> *${m.topic ?? '회의'}*`,
+            `> 잠시 후 시작됩니다. 준비해주세요!`,
+          ].join('\n'),
         );
       }
     }

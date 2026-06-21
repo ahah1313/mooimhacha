@@ -142,6 +142,7 @@ export default function MeetingPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [pendingTasks, setPendingTasks] = useState<ActionItem[]>([]);
   const [members, setMembers] = useState<TeamContribution[]>([]);
+  const [prevDecisions, setPrevDecisions] = useState<Decision[]>([]);
 
   // AI 태스크 확정 모달
   const [confirmTask, setConfirmTask] = useState<ActionItem | null>(null);
@@ -198,6 +199,28 @@ export default function MeetingPage() {
   const [agMinutes, setAgMinutes] = useState<number | "">(10);
 
   const selected = meetings.find((m) => m.id === selectedId) ?? null;
+
+  // 가장 최근에 종료된 회의 (선택 회의 제외)
+  const prevMeeting = useMemo(() => {
+    if (!selected) return null;
+    return (
+      [...meetings]
+        .filter((m) => m.status === "ended" && m.id !== selected.id)
+        .sort((a, b) => {
+          const ta = a.ended_at ?? a.scheduled_at;
+          const tb = b.ended_at ?? b.scheduled_at;
+          return new Date(tb).getTime() - new Date(ta).getTime();
+        })[0] ?? null
+    );
+  }, [meetings, selected]);
+
+  useEffect(() => {
+    setPrevDecisions([]);
+    if (!prevMeeting || selected?.status === "ended") return;
+    apiGet<Decision[]>(`/decisions?meeting_id=${prevMeeting.id}`)
+      .then(setPrevDecisions)
+      .catch(() => {});
+  }, [prevMeeting?.id, selected?.status]);
 
   const loadMeetings = useCallback(async () => {
     if (!team) return;
@@ -272,22 +295,31 @@ export default function MeetingPage() {
 
   async function saveMeetingSettings() {
     if (!selectedId || editSaving) return;
-    if (!editDate || !editTime) {
-      showToast("날짜와 시간을 입력해 주세요", "error");
-      return;
-    }
-    if (new Date(`${editDate}T${editTime}:00`) <= new Date()) {
-      showToast("현재 시각 이후로 설정해 주세요", "error");
-      return;
+    if (selected?.status === "scheduled") {
+      if (!editDate || !editTime) {
+        showToast("날짜와 시간을 입력해 주세요", "error");
+        return;
+      }
+      if (new Date(`${editDate}T${editTime}:00`) <= new Date()) {
+        showToast("현재 시각 이후로 설정해 주세요", "error");
+        return;
+      }
     }
     setEditSaving(true);
     try {
-      await apiPatch(`/meetings/${selectedId}`, {
+      const patch: Record<string, unknown> = {
         topic: editTopic.trim() || undefined,
-        scheduled_at: new Date(`${editDate}T${editTime}:00`).toISOString(),
-        total_minutes: editMinutes || undefined,
-        meeting_type: editMeetingType,
-      });
+      };
+      if (selected?.status !== "ended") {
+        patch.meeting_type = editMeetingType;
+      }
+      if (selected?.status === "scheduled") {
+        patch.scheduled_at = new Date(
+          `${editDate}T${editTime}:00`,
+        ).toISOString();
+        patch.total_minutes = editMinutes || undefined;
+      }
+      await apiPatch(`/meetings/${selectedId}`, patch);
       await loadMeetings();
       showToast("회의 정보가 수정되었습니다.");
     } catch (e) {
@@ -337,6 +369,8 @@ export default function MeetingPage() {
         void apiGet<Decision[]>(`/decisions?meeting_id=${selectedId}`)
           .then(setDecisions)
           .catch(() => {});
+      } else if (msg.type === "action:added") {
+        // 회의 탭에 실시간 액션 목록 없음 — Tasks 페이지에서 확인
       }
     };
     return () => ch.close();
@@ -533,6 +567,11 @@ export default function MeetingPage() {
       setDecisions(
         await apiGet<Decision[]>(`/decisions?meeting_id=${selectedId}`),
       );
+      if (!editingDecision) {
+        const ch = createCompanionChannel();
+        ch.postMessage({ type: "decision:added", meeting_id: selectedId });
+        ch.close();
+      }
       setDecInput("");
       setModalOpen(null);
       showToast(
@@ -783,6 +822,9 @@ export default function MeetingPage() {
       setModalOpen(null);
       setAgTitle("");
       showToast("아젠다가 추가되었습니다");
+      const ch = createCompanionChannel();
+      ch.postMessage({ type: "agenda:added", meeting_id: selectedId });
+      ch.close();
     } catch (e) {
       showToast((e as Error).message, "error");
     } finally {
@@ -1172,7 +1214,6 @@ export default function MeetingPage() {
                       "attendance",
                       "decision",
                       "summary",
-                      "settings",
                     ] as Tab[]
                   ).map((t) => (
                     <div
@@ -1181,17 +1222,31 @@ export default function MeetingPage() {
                       onClick={() => setTab(t)}
                     >
                       {
-                        {
-                          agenda: "아젠다",
-                          speak: "발언 기록",
-                          attendance: "출결",
-                          decision: "결정 사항",
-                          summary: "회의 요약",
-                          settings: "회의 설정",
-                        }[t]
+                        (
+                          {
+                            agenda: "아젠다",
+                            speak: "발언 기록",
+                            attendance: "출결",
+                            decision: "결정 사항",
+                            summary: "회의 요약",
+                          } as Record<string, string>
+                        )[t]
                       }
                     </div>
                   ))}
+                  <div
+                    style={{
+                      width: 1,
+                      background: "var(--border-2)",
+                      margin: "8px 6px",
+                    }}
+                  />
+                  <div
+                    className={`tab ${tab === "settings" ? "active" : ""}`}
+                    onClick={() => setTab("settings")}
+                  >
+                    회의 설정
+                  </div>
                 </div>
               </div>
 
@@ -1199,6 +1254,42 @@ export default function MeetingPage() {
                 {/* 아젠다 */}
                 {tab === "agenda" && (
                   <div className="tab-panel active">
+                    {prevDecisions.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div
+                          className="panel-label"
+                          style={{ marginBottom: 6 }}
+                        >
+                          저번 회의 결정 사항
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 400,
+                              color: "var(--text-soft)",
+                              marginLeft: 6,
+                              textTransform: "none",
+                              letterSpacing: 0,
+                            }}
+                          >
+                            {prevMeeting?.topic ?? "이전 회의"}
+                          </span>
+                        </div>
+                        {prevDecisions.map((d) => (
+                          <div key={d.id} className="dec-item">
+                            <div className="dec-ic">
+                              <i className="ti ti-check" />
+                            </div>
+                            <div className="dec-text">{d.content}</div>
+                          </div>
+                        ))}
+                        <div
+                          style={{
+                            borderTop: "1px solid var(--border)",
+                            margin: "12px 0 10px",
+                          }}
+                        />
+                      </div>
+                    )}
                     <div className="panel-label">아젠다 진행</div>
                     {agendas.length === 0 && (
                       <div
@@ -1815,7 +1906,7 @@ export default function MeetingPage() {
                           type="date"
                           min={todayStr()}
                           value={editDate}
-                          disabled={selected.status === "ended"}
+                          disabled={selected.status !== "scheduled"}
                           onChange={(e) => setEditDate(e.target.value)}
                         />
                       </div>
@@ -1826,7 +1917,7 @@ export default function MeetingPage() {
                           type="time"
                           min={timeMinForDate(editDate)}
                           value={editTime}
-                          disabled={selected.status === "ended"}
+                          disabled={selected.status !== "scheduled"}
                           onChange={(e) => setEditTime(e.target.value)}
                         />
                       </div>
@@ -1839,7 +1930,7 @@ export default function MeetingPage() {
                         min={5}
                         step={5}
                         value={editMinutes}
-                        disabled={selected.status === "ended"}
+                        disabled={selected.status !== "scheduled"}
                         onChange={(e) =>
                           setEditMinutes(
                             e.target.value === "" ? "" : Number(e.target.value),
@@ -1847,6 +1938,12 @@ export default function MeetingPage() {
                         }
                       />
                     </div>
+                    {selected.status === "active" && (
+                      <div className="summary-box" style={{ marginBottom: 8 }}>
+                        <i className="ti ti-info-circle" />
+                        진행 중인 회의는 이름과 회의 유형만 수정할 수 있습니다.
+                      </div>
+                    )}
                     {selected.status === "ended" && (
                       <div className="summary-box" style={{ marginBottom: 8 }}>
                         <i className="ti ti-info-circle" />
@@ -1936,6 +2033,7 @@ export default function MeetingPage() {
               placeholder="예) 중간 점검 회의"
               value={newTopic}
               onChange={(e) => setNewTopic(e.target.value)}
+              autoFocus
             />
           </div>
           <div className="field">
@@ -2093,6 +2191,7 @@ export default function MeetingPage() {
               maxLength={200}
               value={quickTopic}
               onChange={(e) => setQuickTopic(e.target.value)}
+              autoFocus
             />
           </div>
           <div className="field">
@@ -2228,6 +2327,17 @@ export default function MeetingPage() {
               placeholder="회의에서 결정된 내용을 입력하세요"
               value={decInput}
               onChange={(e) => setDecInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  !e.shiftKey &&
+                  !e.nativeEvent.isComposing
+                ) {
+                  e.preventDefault();
+                  void saveDecision();
+                }
+              }}
+              autoFocus
             />
           </div>
         </Modal>
@@ -2274,6 +2384,7 @@ export default function MeetingPage() {
                 placeholder="예) 가족 행사로 참석하지 못했습니다."
                 value={absenceInput}
                 onChange={(e) => setAbsenceInput(e.target.value)}
+                autoFocus
               />
             </div>
           </>
@@ -2475,6 +2586,7 @@ export default function MeetingPage() {
               placeholder="예) 최종 발표 순서 확정"
               value={agTitle}
               onChange={(e) => setAgTitle(e.target.value)}
+              autoFocus
             />
           </div>
           <div className="field">

@@ -77,12 +77,7 @@ export class ContributionsService {
         this.membershipRepo.find({ where: { team_id: meeting.team_id } }),
       ]);
 
-    // 참석자: presence join 기록자, 없으면 팀 멤버 전원
-    const joined = new Set(
-      presence.filter((p) => p.event_type === 'join').map((p) => p.user_id),
-    );
-    const participantIds =
-      joined.size > 0 ? [...joined] : members.map((m) => m.user_id);
+    const participantIds = members.map((m) => m.user_id);
 
     const payload = {
       meeting: {
