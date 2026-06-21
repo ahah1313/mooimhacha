@@ -29,11 +29,12 @@ export default function OnboardingPage() {
   const [teamId, setTeamId] = useState(0);
   const [teamName, setTeamName] = useState("");
   const [selectedChip, setSelectedChip] = useState("");
+  const [customCourse, setCustomCourse] = useState(""); // 과목 유형 직접 입력
   const [inviteCode, setInviteCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [copied, setCopied] = useState(false);
-  // 팀 설정 접이식 — 기본 접힘. 펼쳐서 바꾼 값만 생성 후 PATCH 한다.
-  const [showSettings, setShowSettings] = useState(false);
+  // 팀 설정 접이식 — 기본 펼침(세부 설정을 바로 보여줘 설정을 유도). 바꾼 값만 생성 후 PATCH 한다.
+  const [showSettings, setShowSettings] = useState(true);
   const [settings, setSettings] = useState<OnboardingSettings>({
     ...DEFAULT_SETTINGS,
   });
@@ -77,7 +78,7 @@ export default function OnboardingPage() {
         },
         body: JSON.stringify({
           name: teamName.trim(),
-          course_name: selectedChip || "기타",
+          course_name: customCourse.trim() || selectedChip || "기타",
         }),
       });
 
@@ -174,6 +175,7 @@ export default function OnboardingPage() {
                 <label className="field-label">그룹 이름</label>
                 <input
                   className="input"
+                  data-tour="team-name-input"
                   placeholder="예) 캡스톤 팀플 B"
                   maxLength={100}
                   value={teamName}
@@ -185,28 +187,47 @@ export default function OnboardingPage() {
                 <label className="field-label">
                   과목 유형 <span className="opt">(선택)</span>
                 </label>
-                <div className="chip-row">
+                <div className="field-desc">
+                  어떤 수업의 팀플인가요? 분류·통계에 쓰여요.
+                </div>
+                <div className="chip-row" data-tour="course-chips">
                   {chips.map((chip) => (
                     <div
                       key={chip}
                       className={`chip ${selectedChip === chip ? "on" : ""}`}
-                      onClick={() => setSelectedChip(chip)}
+                      onClick={() => {
+                        setSelectedChip(chip);
+                        setCustomCourse("");
+                      }}
                     >
                       {chip}
                     </div>
                   ))}
                 </div>
+                <input
+                  className="input"
+                  style={{ marginTop: 8 }}
+                  placeholder="또는 직접 입력 (예: 디자인 워크숍)"
+                  maxLength={30}
+                  value={customCourse}
+                  onChange={(e) => {
+                    setCustomCourse(e.target.value);
+                    if (e.target.value) setSelectedChip("");
+                  }}
+                />
               </div>
               <div className="field-row">
                 <div className="field">
                   <label className="field-label">
                     마감일 <span className="opt">(선택)</span>
                   </label>
-                  <input className="input" type="date" />
+                  <div className="field-desc">제출 마감일</div>
+                  <input className="input" type="date" data-tour="deadline-field" />
                 </div>
                 <div className="field">
                   <label className="field-label">최대 인원</label>
-                  <select className="input">
+                  <div className="field-desc">팀 최대 인원수</div>
+                  <select className="input" data-tour="member-count">
                     <option>2명</option>
                     <option>3명</option>
                     <option defaultValue="4명">4명</option>
@@ -216,8 +237,8 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {/* 팀 설정 — 기본 접힘. 바꾼 값만 생성 직후 저장된다 (나중에 설정 페이지에서 변경 가능). */}
-              <div className="ob-settings">
+              {/* 팀 설정 — 기본 펼침. 바꾼 값만 생성 직후 저장된다 (나중에 설정 페이지에서 변경 가능). */}
+              <div className="ob-settings" data-tour="team-settings">
                 <button
                   type="button"
                   className="ob-settings-toggle"
@@ -227,12 +248,19 @@ export default function OnboardingPage() {
                   <i
                     className={`ti ti-chevron-${showSettings ? "down" : "right"}`}
                   />
-                  팀 설정 <span className="opt">(선택)</span>
+                  팀 설정 <span className="opt">(나중에 변경 가능)</span>
                 </button>
                 {showSettings && (
                   <div className="ob-settings-body">
+                    <div className="ob-settings-desc">
+                      기여도 집계 규칙이에요. 우리 팀에 맞게 조정해 두면 리포트가
+                      더 정확해져요 — 기본값으로 시작해도 괜찮아요.
+                    </div>
                     <div className="field">
                       <label className="field-label">기여도 공개 범위</label>
+                      <div className="field-desc">
+                        기여도 리포트를 팀에서 누가 볼 수 있는지
+                      </div>
                       <select
                         className="input"
                         value={settings.contribution_visibility}
@@ -251,6 +279,9 @@ export default function OnboardingPage() {
                     </div>
                     <div className="field">
                       <label className="field-label">무단결석 처리</label>
+                      <div className="field-desc">
+                        통보 없이 회의에 빠진 팀원의 기여도를 어떻게 다룰지
+                      </div>
                       <select
                         className="input"
                         value={settings.absent_meeting_handling}
@@ -271,6 +302,9 @@ export default function OnboardingPage() {
                     </div>
                     <div className="field">
                       <label className="field-label">마감 패널티</label>
+                      <div className="field-desc">
+                        태스크 마감을 넘겼을 때 감점 강도
+                      </div>
                       <select
                         className="input"
                         value={settings.deadline_penalty_curve}
@@ -290,6 +324,9 @@ export default function OnboardingPage() {
                     <div className="field-row">
                       <div className="field">
                         <label className="field-label">최소 회의 시간 (분)</label>
+                        <div className="field-desc">
+                          이보다 짧은 회의는 집계 제외
+                        </div>
                         <input
                           className="input"
                           type="number"
@@ -310,6 +347,9 @@ export default function OnboardingPage() {
                       </div>
                       <div className="field">
                         <label className="field-label">팀장 보너스 배율</label>
+                        <div className="field-desc">
+                          팀장에게 더해줄 기여도 가산 (0=없음)
+                        </div>
                         <input
                           className="input"
                           type="number"
@@ -337,6 +377,7 @@ export default function OnboardingPage() {
             <div className="ob-foot">
               <button
                 className="btn btn-primary btn-full"
+                data-tour="create-team-btn"
                 onClick={createTeam}
                 disabled={isCreating}
               >
@@ -368,7 +409,9 @@ export default function OnboardingPage() {
                   <div className="code-label">
                     <i className="ti ti-key" /> 우리 팀 초대코드
                   </div>
-                  <div className="code-val">{inviteCode}</div>
+                  <div className="code-val" data-tour="invite-code">
+                    {inviteCode}
+                  </div>
                 </div>
                 <button
                   className="copy-btn"
@@ -480,6 +523,7 @@ export default function OnboardingPage() {
             <div className="ob-foot">
               <button
                 className="btn btn-primary btn-full"
+                data-tour="dashboard-go"
                 onClick={() => navigate(`/dashboard/${teamId}`)}
               >
                 <i className="ti ti-rocket" /> 대시보드로 이동
