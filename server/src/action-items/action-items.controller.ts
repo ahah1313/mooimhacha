@@ -57,6 +57,15 @@ export class ActionItemsController {
     return this.actionItemsService.create(req.user.id, dto);
   }
 
+  @Get('logs')
+  @ApiOperation({ summary: '팀 전체 태스크 수정/삭제 이력 (team_id 필수)' })
+  getTeamLogs(
+    @Request() req: { user: User },
+    @Query('team_id', ParseIntPipe) teamId: number,
+  ) {
+    return this.actionItemsService.getTeamLogs(req.user.id, teamId);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: '액션 수정 (상태·완료 처리)' })
   update(
@@ -74,5 +83,14 @@ export class ActionItemsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.actionItemsService.remove(req.user.id, id);
+  }
+
+  @Get(':id/logs')
+  @ApiOperation({ summary: '태스크 수정/삭제 이력 조회' })
+  getLogs(
+    @Request() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.actionItemsService.getLogs(req.user.id, id);
   }
 }

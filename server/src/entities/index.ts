@@ -14,6 +14,7 @@ import { Notification } from './notification.entity';
 import { MeetingAbsence } from './meeting-absence.entity';
 import { AbsenceConsent } from './absence-consent.entity';
 import { TaskExtensionRequest } from './task-extension-request.entity';
+import { ActionItemLog } from './action-item-log.entity';
 
 // TypeOrmModule.forRoot 의 entities 등록용 단일 출처
 export const ALL_ENTITIES = [
@@ -33,6 +34,7 @@ export const ALL_ENTITIES = [
   MeetingAbsence,
   AbsenceConsent,
   TaskExtensionRequest,
+  ActionItemLog,
 ];
 
 export {
@@ -52,4 +54,5 @@ export {
   MeetingAbsence,
   AbsenceConsent,
   TaskExtensionRequest,
+  ActionItemLog,
 };
