@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { ContributionScore } from '../entities/contribution-score.entity';
@@ -40,6 +41,7 @@ export class MeetingAbsencesService {
     private settingsRepo: Repository<TeamSettings>,
     private teamsService: TeamsService,
     private slackService: SlackService,
+    private config: ConfigService,
   ) {}
 
   // 종료된 회의의 출결 현황 — presence(입장 기록) + 저장된 ContributionScore + 사유/동의 조합
@@ -251,7 +253,7 @@ export class MeetingAbsencesService {
         }),
       );
     }
-    void this.notifyAbsenceCreated(meeting, userId, isLate);
+    void this.notifyAbsenceCreated(meeting, saved, isLate);
     return saved;
   }
 
@@ -363,28 +365,107 @@ export class MeetingAbsencesService {
     };
   }
 
+  // Slack 버튼 클릭으로 동의 — slack_user_id 기준으로 사용자를 찾아 동의 처리
+  async consentBySlack(slackUserId: string, absenceId: number): Promise<void> {
+    const user = await this.userRepo.findOne({
+      where: { slack_user_id: slackUserId },
+    });
+    if (!user) return;
+    try {
+      await this.consent(user.id, absenceId);
+    } catch {
+      // 이미 동의했거나 승인된 경우 등 — 무시
+    }
+  }
+
   // --- Slack 알림 ---
 
   private async notifyAbsenceCreated(
     meeting: Meeting,
-    userId: number,
+    absence: MeetingAbsence,
     isLate: boolean,
   ): Promise<void> {
     const [settings, user, team] = await Promise.all([
       this.settingsRepo.findOne({ where: { team_id: meeting.team_id } }),
-      this.userRepo.findOne({ where: { id: userId } }),
+      this.userRepo.findOne({ where: { id: absence.user_id } }),
       this.teamRepo.findOne({ where: { id: meeting.team_id } }),
     ]);
-    if (!settings?.slack_bot_token || !settings.slack_channel_id) return;
+    if (!settings?.slack_bot_token) return;
+
     const label = isLate ? '지각' : '결석';
-    await this.slackService.sendChannelMessage(
-      settings.slack_bot_token,
-      settings.slack_channel_id,
-      [
-        `🔔 *출결 사유 등록* — ${team?.name ?? '팀'}`,
-        `> *${user?.name ?? '팀원'}*님이 *${meeting.topic ?? '회의'}* ${label} 사유를 입력했습니다`,
-        `> 확인 후 동의해주세요`,
-      ].join('\n'),
+    const teamName = team?.name ?? '팀';
+    const userName = user?.name ?? '팀원';
+    const meetingTopic = meeting.topic ?? '회의';
+    const clientUrl = this.config.get<string>('CLIENT_URL') ?? '';
+    const attendanceUrl = `${clientUrl}/meetings/${meeting.id}/attendance`;
+
+    if (settings.slack_channel_id) {
+      await this.slackService.sendChannelMessage(
+        settings.slack_bot_token,
+        settings.slack_channel_id,
+        [
+          `🔔 *출결 사유 등록* — ${teamName}`,
+          `> *${userName}*님이 *${meetingTopic}* ${label} 사유를 입력했습니다`,
+          `> 확인 후 동의해주세요`,
+          `<${attendanceUrl}|출결 현황 보기 →>`,
+        ].join('\n'),
+      );
+    }
+
+    const members = await this.teamsService.getMembers(meeting.team_id);
+    const otherIds = members
+      .map((m) => m.user_id)
+      .filter((id) => id !== Number(absence.user_id));
+    if (otherIds.length === 0) return;
+
+    const slackUsers = await this.userRepo.find({
+      where: { id: In(otherIds) },
+    });
+
+    const blocks = [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: [
+            `🔔 *출결 사유 동의 요청* — ${teamName}`,
+            `*${userName}*님이 *${meetingTopic}* ${label} 사유를 입력했습니다.`,
+            ``,
+            `> ${absence.reason}`,
+          ].join('\n'),
+        },
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: '✅ 동의하기' },
+            action_id: 'consent_absence',
+            value: String(absence.id),
+            style: 'primary',
+          },
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: '출결 현황 보기 →' },
+            url: attendanceUrl,
+            action_id: 'view_attendance',
+          },
+        ],
+      },
+    ];
+
+    await Promise.all(
+      slackUsers
+        .filter((u) => u.slack_user_id)
+        .map((u) =>
+          this.slackService.sendDmWithBlocks(
+            settings.slack_bot_token!,
+            u.slack_user_id!,
+            blocks,
+            `${userName}님의 ${meetingTopic} ${label} 사유 동의 요청`,
+          ),
+        ),
     );
   }
 
@@ -420,12 +501,15 @@ export class MeetingAbsencesService {
       settings.late_threshold_minutes ?? 5,
     );
     const label = isLate ? '지각' : '결석';
+    const clientUrl = this.config.get<string>('CLIENT_URL') ?? '';
+    const attendanceUrl = `${clientUrl}/meetings/${meeting.id}/attendance`;
     await this.slackService.sendDm(
       settings.slack_bot_token,
       user.slack_user_id,
       [
         `✅ *출결 사유 승인* — ${team?.name ?? '팀'}`,
         `> *${meeting.topic ?? '회의'}* ${label} 사유가 승인됐습니다`,
+        `<${attendanceUrl}|출결 현황 보기 →>`,
       ].join('\n'),
     );
   }

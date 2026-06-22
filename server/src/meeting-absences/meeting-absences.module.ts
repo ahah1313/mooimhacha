@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Meeting } from '../entities/meeting.entity';
 import { ContributionScore } from '../entities/contribution-score.entity';
@@ -26,7 +26,7 @@ import { MeetingAbsencesService } from './meeting-absences.service';
       TeamSettings,
     ]),
     TeamsModule,
-    SlackModule,
+    forwardRef(() => SlackModule),
   ],
   controllers: [MeetingAbsencesController],
   providers: [MeetingAbsencesService],

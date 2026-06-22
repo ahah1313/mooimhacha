@@ -13,13 +13,20 @@ describe('MeetingAbsencesService.isLateByPresence', () => {
     null as never,
     null as never,
     null as never,
+    null as never,
+    null as never,
   );
 
   const meeting = { t0_timestamp: new Date('2026-01-01T00:00:00Z') };
   const isLate = (offsetMs: number, thresholdMin: number): boolean =>
     (
       service as unknown as {
-        isLateByPresence: (m: unknown, p: unknown, u: number, t: number) => boolean;
+        isLateByPresence: (
+          m: unknown,
+          p: unknown,
+          u: number,
+          t: number,
+        ) => boolean;
       }
     ).isLateByPresence(
       meeting,
@@ -44,7 +51,12 @@ describe('MeetingAbsencesService.isLateByPresence', () => {
     expect(
       (
         service as unknown as {
-          isLateByPresence: (m: unknown, p: unknown, u: number, t: number) => boolean;
+          isLateByPresence: (
+            m: unknown,
+            p: unknown,
+            u: number,
+            t: number,
+          ) => boolean;
         }
       ).isLateByPresence(meeting, [], 1, 5),
     ).toBe(false);

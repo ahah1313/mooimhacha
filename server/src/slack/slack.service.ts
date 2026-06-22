@@ -44,6 +44,28 @@ export class SlackService {
     }
   }
 
+  async sendDmWithBlocks(
+    botToken: string,
+    slackUserId: string,
+    blocks: object[],
+    text: string,
+  ): Promise<void> {
+    try {
+      const client = new WebClient(botToken);
+      const res = await client.conversations.open({ users: slackUserId });
+      const dmChannelId = res.channel?.id;
+      if (!dmChannelId) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await client.chat.postMessage({
+        channel: dmChannelId,
+        text,
+        blocks: blocks as any,
+      });
+    } catch (e) {
+      this.logger.error('Slack DM(blocks) 전송 실패', e as Error);
+    }
+  }
+
   getOAuthUrl(teamId: number): string {
     const clientId = this.config.get<string>('SLACK_CLIENT_ID') ?? '';
     const redirectUri = this.config.get<string>('SLACK_REDIRECT_URI') ?? '';
