@@ -478,12 +478,6 @@
   font-weight: 500;
 }
 
-.mini-meeting {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 15px 16px;
-}
 .task-mini {
   display: flex;
   align-items: center;

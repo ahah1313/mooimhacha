@@ -418,72 +418,75 @@ export default function OverviewPage() {
           </Card>
         </div>
 
-        {/* 예정된 회의: .mini-meeting 전용 레이아웃이라 Card 컴포넌트 미사용.
-            card-head/card-title 클래스는 헤더 스타일만 재사용. */}
-        <div className="mini-meeting" data-tour="ov-meeting">
-          <div className="card-head" style={{ padding: "0 0 10px" }}>
-            <span className="card-title">
-              <i className="ti ti-clock" /> 예정된 회의
-            </span>
-            {focusMeeting?.status === "active" ? (
-              <span className="spill spill-live">🔴 진행</span>
-            ) : (
-              <span className="badge">예정</span>
-            )}
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>
-            {focusMeeting?.topic ??
-              (focusMeeting ? "제목 없는 회의" : "예정된 회의 없음")}
-          </div>
-          <div style={{ fontSize: 11.5, color: "var(--text-soft)" }}>
-            {focusMeeting
-              ? `${meetingDateLabel(focusMeeting)} · ${focusMeeting.total_minutes}분 · ${focusMeeting.meeting_type === "regular" ? "전체 회의" : "부분 회의"}`
-              : "회의 관리에서 새 회의를 만들어 보세요."}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              margin: "14px 0 4px",
-            }}
+        <div data-tour="ov-meeting" style={{ display: "flex" }}>
+          <Card
+            icon="ti ti-clock"
+            title="예정된 회의"
+            style={{ flex: 1 }}
+            extra={
+              focusMeeting?.status === "active" ? (
+                <span className="spill spill-live">🔴 진행</span>
+              ) : (
+                <span className="badge">예정</span>
+              )
+            }
           >
-            <div style={{ display: "flex" }}>
-              {(team?.members ?? []).slice(0, 5).map((m, i) => (
-                <div
-                  key={i}
-                  className="av av-sm"
-                  title={m.nickname ?? m.name}
+            <div style={{ padding: "2px 18px 16px" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>
+                {focusMeeting?.topic ??
+                  (focusMeeting ? "제목 없는 회의" : "예정된 회의 없음")}
+              </div>
+              <div style={{ fontSize: 11.5, color: "var(--text-soft)" }}>
+                {focusMeeting
+                  ? `${meetingDateLabel(focusMeeting)} · ${focusMeeting.total_minutes}분 · ${focusMeeting.meeting_type === "regular" ? "전체 회의" : "부분 회의"}`
+                  : "회의 관리에서 새 회의를 만들어 보세요."}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  margin: "14px 0 4px",
+                }}
+              >
+                <div style={{ display: "flex" }}>
+                  {(team?.members ?? []).slice(0, 5).map((m, i) => (
+                    <div
+                      key={i}
+                      className="av av-sm"
+                      title={m.nickname ?? m.name}
+                      style={{
+                        background: avatarBg(i),
+                        marginLeft: i === 0 ? 0 : -8,
+                        boxShadow: "0 0 0 2px var(--surface)",
+                      }}
+                    >
+                      {(m.nickname ?? m.name)[0]}
+                    </div>
+                  ))}
+                </div>
+                <span
                   style={{
-                    background: avatarBg(i),
-                    marginLeft: i === 0 ? 0 : -8,
-                    boxShadow: "0 0 0 2px var(--surface)",
+                    fontSize: 11.5,
+                    color: "var(--text-soft)",
+                    fontWeight: 600,
                   }}
                 >
-                  {(m.nickname ?? m.name)[0]}
-                </div>
-              ))}
+                  {team?.member_count ?? 0}명 참여
+                </span>
+              </div>
+              <button
+                className="btn btn-primary btn-full"
+                style={{ marginTop: 12 }}
+                onClick={() => navigate(`/dashboard/${team?.id}/meeting`)}
+              >
+                <i className="ti ti-arrow-right" />{" "}
+                {focusMeeting?.status === "active"
+                  ? "회의 참여하기"
+                  : "회의 관리로 이동"}
+              </button>
             </div>
-            <span
-              style={{
-                fontSize: 11.5,
-                color: "var(--text-soft)",
-                fontWeight: 600,
-              }}
-            >
-              {team?.member_count ?? 0}명 참여
-            </span>
-          </div>
-          <button
-            className="btn btn-primary btn-full"
-            style={{ marginTop: 12 }}
-            onClick={() => navigate(`/dashboard/${team?.id}/meeting`)}
-          >
-            <i className="ti ti-arrow-right" />{" "}
-            {focusMeeting?.status === "active"
-              ? "회의 참여하기"
-              : "회의 관리로 이동"}
-          </button>
+          </Card>
         </div>
       </div>
 
