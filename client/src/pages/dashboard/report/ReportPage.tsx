@@ -205,7 +205,7 @@ export default function ReportPage() {
         `/teams/${team.id}/contributions`,
       ),
       apiGet<Meeting[]>(`/meetings?team_id=${team.id}`),
-      apiGet<ActionItem[]>(`/action-items?team_id=${team.id}`),
+      apiGet<ActionItem[]>(`/action-items?team_id=${team.id}&confirmed=true`),
       apiGet<{
         final_task_weight: number;
         weight_speech_in_meeting: number;

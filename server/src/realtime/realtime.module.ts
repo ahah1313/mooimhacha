@@ -10,6 +10,7 @@ import { MeetingsModule } from '../meetings/meetings.module';
 import { AgendasModule } from '../agendas/agendas.module';
 import { DecisionsModule } from '../decisions/decisions.module';
 import { ActionItemsModule } from '../action-items/action-items.module';
+import { TeamsModule } from '../teams/teams.module';
 import { RealtimeGateway } from './realtime.gateway';
 import { MeetingStateService } from './meeting-state.service';
 
@@ -22,6 +23,7 @@ import { MeetingStateService } from './meeting-state.service';
     AgendasModule,
     DecisionsModule,
     ActionItemsModule,
+    TeamsModule,
   ],
   providers: [RealtimeGateway, MeetingStateService],
 })

@@ -11,6 +11,7 @@ import { TeamSettings } from '../entities/team-settings.entity';
 import { User } from '../entities/user.entity';
 import { TeamsService } from '../teams/teams.service';
 import { SlackService } from '../slack/slack.service';
+import { TaskEvents } from '../events/task-events';
 import { CreateActionItemDto } from './dto/create-action-item.dto';
 import { UpdateActionItemDto } from './dto/update-action-item.dto';
 
@@ -29,6 +30,7 @@ export class ActionItemsService {
     private userRepo: Repository<User>,
     private teamsService: TeamsService,
     private slackService: SlackService,
+    private taskEvents: TaskEvents,
   ) {}
 
   async create(userId: number, dto: CreateActionItemDto) {
@@ -49,7 +51,9 @@ export class ActionItemsService {
       completed_at: dto.status === 'done' ? new Date() : null,
       confirmed: dto.source === 'ai_extracted' ? false : true,
     });
-    return this.actionRepo.save(action);
+    const saved = await this.actionRepo.save(action);
+    this.taskEvents.emitNew({ team_id: dto.team_id, action: saved });
+    return saved;
   }
 
   async list(
@@ -131,6 +135,7 @@ export class ActionItemsService {
       void this.notifyTaskDone(saved);
     }
 
+    this.taskEvents.emitUpdate({ team_id: saved.team_id, action: saved });
     return saved;
   }
 
@@ -151,7 +156,9 @@ export class ActionItemsService {
       }),
     );
 
+    const { id: deletedId, team_id: deletedTeamId } = action;
     await this.actionRepo.remove(action);
+    this.taskEvents.emitDelete({ team_id: deletedTeamId, id: deletedId });
     return { deleted: true };
   }
 

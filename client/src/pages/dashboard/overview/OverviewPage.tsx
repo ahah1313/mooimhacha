@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Socket } from "socket.io-client";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import Card from "@/components/Card";
 import { apiGet, apiPatch } from "@/lib/api";
 import { getUser } from "@/lib/auth";
+import { connectTeamSocket, joinTeam, leaveTeam } from "@/lib/ws";
 import type { ActionItem, Meeting, TeamContribution } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 import { avatarBg, memberColor } from "@/lib/avatarColor";
@@ -102,6 +104,8 @@ export default function OverviewPage() {
     weight_attend_in_meeting: number;
   } | null>(null);
 
+  const socketRef = useRef<Socket | null>(null);
+
   const nicknameMap = useMemo(
     () =>
       new Map(
@@ -142,6 +146,38 @@ export default function OverviewPage() {
     });
     return () => {
       alive = false;
+    };
+  }, [team]);
+
+  useEffect(() => {
+    if (!team) return;
+    const socket = connectTeamSocket();
+    socketRef.current = socket;
+    socket.on("connect", () => joinTeam(socket, team.id));
+    socket.on("task:new", (p: { action: ActionItem }) => {
+      if (!p.action.confirmed) return;
+      setTasks((prev) =>
+        prev.some((t) => Number(t.id) === Number(p.action.id))
+          ? prev
+          : [...prev, p.action],
+      );
+    });
+    socket.on("task:update", (p: { action: ActionItem }) => {
+      setTasks((prev) => {
+        const idx = prev.findIndex((t) => Number(t.id) === Number(p.action.id));
+        if (idx === -1) return p.action.confirmed ? [...prev, p.action] : prev;
+        const next = [...prev];
+        next[idx] = p.action;
+        return next;
+      });
+    });
+    socket.on("task:delete", (p: { id: number }) => {
+      setTasks((prev) => prev.filter((t) => Number(t.id) !== Number(p.id)));
+    });
+    return () => {
+      leaveTeam(socket, team.id);
+      socket.disconnect();
+      socketRef.current = null;
     };
   }, [team]);
 

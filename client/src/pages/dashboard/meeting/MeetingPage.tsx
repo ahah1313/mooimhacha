@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import type { Socket } from "socket.io-client";
 import ReactMarkdown from "react-markdown";
 import { useOutletContext } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
@@ -8,6 +9,7 @@ import HeadsetGateModal from "@/components/HeadsetGateModal";
 import MemberSelect from "@/components/MemberSelect";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 import { openCompanion, createCompanionChannel } from "@/lib/companion";
+import { connectTeamSocket, joinTeam, leaveTeam } from "@/lib/ws";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import type {
   ActionItem,
@@ -145,6 +147,8 @@ export default function MeetingPage() {
   const [members, setMembers] = useState<TeamContribution[]>([]);
   const [prevDecisions, setPrevDecisions] = useState<Decision[]>([]);
 
+  const teamSocketRef = useRef<Socket | null>(null);
+
   // AI 태스크 확정 모달
   const [confirmTask, setConfirmTask] = useState<ActionItem | null>(null);
   const [confirmDesc, setConfirmDesc] = useState("");
@@ -268,6 +272,36 @@ export default function MeetingPage() {
   useEffect(() => {
     void loadMeetings();
   }, [loadMeetings]);
+
+  useEffect(() => {
+    if (!team) return;
+    const socket = connectTeamSocket();
+    teamSocketRef.current = socket;
+    socket.on("connect", () => joinTeam(socket, team.id));
+    socket.on("task:update", (p: { action: ActionItem }) => {
+      setPendingTasks((prev) => {
+        // 확정/취소된 태스크는 미확정 목록에서 제거
+        if (p.action.confirmed || p.action.status === "cancelled") {
+          return prev.filter((t) => Number(t.id) !== Number(p.action.id));
+        }
+        const idx = prev.findIndex((t) => Number(t.id) === Number(p.action.id));
+        if (idx === -1) return prev;
+        const next = [...prev];
+        next[idx] = p.action;
+        return next;
+      });
+    });
+    socket.on("task:delete", (p: { id: number }) => {
+      setPendingTasks((prev) =>
+        prev.filter((t) => Number(t.id) !== Number(p.id)),
+      );
+    });
+    return () => {
+      leaveTeam(socket, team.id);
+      socket.disconnect();
+      teamSocketRef.current = null;
+    };
+  }, [team]);
 
   const loadPendingTasks = useCallback(async () => {
     if (!team || !selectedId) return;

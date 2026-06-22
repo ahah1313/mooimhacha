@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import type { Socket } from "socket.io-client";
 import { useOutletContext } from "react-router-dom";
 import { avatarBg, memberColor } from "@/lib/avatarColor";
 import { todayStr, timeMinForDate } from "@/lib/dateUtils";
@@ -8,6 +9,7 @@ import ConfirmModal from "@/components/ConfirmModal";
 import MemberSelect from "@/components/MemberSelect";
 import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api";
 import { getUser } from "@/lib/auth";
+import { connectTeamSocket, joinTeam, leaveTeam } from "@/lib/ws";
 import type { ActionItem, TeamContribution, ActionItemLog } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 
@@ -150,6 +152,8 @@ export default function TasksPage() {
   const [logs, setLogs] = useState<ActionItemLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
+  const socketRef = useRef<Socket | null>(null);
+
   const load = useCallback(async () => {
     if (!team) return;
     try {
@@ -169,6 +173,42 @@ export default function TasksPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!team) return;
+    const socket = connectTeamSocket();
+    socketRef.current = socket;
+    socket.on("connect", () => joinTeam(socket, team.id));
+    socket.on("task:new", (p: { action: ActionItem }) => {
+      if (p.action.status === "cancelled" || !p.action.confirmed) return;
+      setTasks((prev) =>
+        prev.some((t) => Number(t.id) === Number(p.action.id))
+          ? prev
+          : [...prev, p.action],
+      );
+    });
+    socket.on("task:update", (p: { action: ActionItem }) => {
+      setTasks((prev) => {
+        if (p.action.status === "cancelled") {
+          return prev.filter((t) => Number(t.id) !== Number(p.action.id));
+        }
+        if (!p.action.confirmed) return prev;
+        const idx = prev.findIndex((t) => Number(t.id) === Number(p.action.id));
+        if (idx === -1) return [...prev, p.action];
+        const next = [...prev];
+        next[idx] = p.action;
+        return next;
+      });
+    });
+    socket.on("task:delete", (p: { id: number }) => {
+      setTasks((prev) => prev.filter((t) => Number(t.id) !== Number(p.id)));
+    });
+    return () => {
+      leaveTeam(socket, team.id);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [team]);
 
   useEffect(() => {
     if (view === "history") void loadHistoryLogs();
@@ -1224,7 +1264,7 @@ export default function TasksPage() {
               value={editDetail}
               onChange={(e) => setEditDetail(e.target.value)}
             />
-            <div className="field-hint">세부사항은 승인 없이 바로 반영돼요</div>
+
           </div>
           <div className="field-row">
             <div className="field">

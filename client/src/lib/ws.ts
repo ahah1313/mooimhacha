@@ -149,3 +149,16 @@ export function speakingStart(socket: Socket, meetingId: number) {
 export function speakingEnd(socket: Socket, meetingId: number) {
   socket.emit("user:speaking-end", { meeting_id: meetingId });
 }
+
+// 팀 룸 소켓 — 대시보드 태스크 실시간 동기화용
+export function connectTeamSocket(): Socket {
+  return connectMeetingSocket();
+}
+
+export function joinTeam(socket: Socket, teamId: number) {
+  socket.emit("team:join", { team_id: teamId });
+}
+
+export function leaveTeam(socket: Socket, teamId: number) {
+  socket.emit("team:leave", { team_id: teamId });
+}

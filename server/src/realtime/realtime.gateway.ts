@@ -25,9 +25,14 @@ import { DecisionsService } from '../decisions/decisions.service';
 import { ActionItemsService } from '../action-items/action-items.service';
 import { MeetingStateService } from './meeting-state.service';
 import { MeetingEvents } from '../events/meeting-events';
+import { TaskEvents } from '../events/task-events';
+import { TeamsService } from '../teams/teams.service';
 
 interface JoinPayload {
   meeting_id: number;
+}
+interface TeamJoinPayload {
+  team_id: number;
 }
 interface UtterancePayload {
   meeting_id: number;
@@ -79,6 +84,10 @@ function room(meetingId: number): string {
   return `meeting:${meetingId}`;
 }
 
+function teamRoom(teamId: number): string {
+  return `team:${teamId}`;
+}
+
 // 데코레이터는 import 시점에 평가되므로 ConfigService 대신 process.env 직접 참조 (정적 폴백 필수).
 // origin 콜백: 패키징 Electron(file:// 로드)은 Origin이 'null', 서버 간 호출은 Origin 부재라
 // 화이트리스트 배열로는 차단되므로 둘은 허용하고 그 외만 화이트리스트 검사한다.
@@ -112,7 +121,9 @@ export class RealtimeGateway
     private decisionsService: DecisionsService,
     private actionItemsService: ActionItemsService,
     private state: MeetingStateService,
+    private teamsService: TeamsService,
     private meetingEvents: MeetingEvents,
+    private taskEvents: TaskEvents,
     @InjectRepository(Utterance)
     private utteranceRepo: Repository<Utterance>,
     @InjectRepository(PresenceEvent)
@@ -142,6 +153,17 @@ export class RealtimeGateway
         .emit('meeting:ended', { meeting_id: meetingId });
       this.state.clear(meetingId);
       this.rehydratedMeetings.delete(meetingId);
+    });
+
+    // 태스크 이벤트 → 팀 룸 broadcast
+    this.taskEvents.onNew(({ team_id, action }) => {
+      this.server.to(teamRoom(Number(team_id))).emit('task:new', { action });
+    });
+    this.taskEvents.onUpdate(({ team_id, action }) => {
+      this.server.to(teamRoom(Number(team_id))).emit('task:update', { action });
+    });
+    this.taskEvents.onDelete(({ team_id, id }) => {
+      this.server.to(teamRoom(Number(team_id))).emit('task:delete', { id });
     });
   }
 
@@ -250,6 +272,28 @@ export class RealtimeGateway
       user_id: userId,
       event: 'leave',
     });
+    return { ok: true };
+  }
+
+  // --- 팀 룸 입장/퇴장 (대시보드 태스크 실시간 동기화) ---
+  @SubscribeMessage('team:join')
+  async onTeamJoin(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: TeamJoinPayload,
+  ) {
+    const userId = this.userId(client);
+    const teamId = Number(body.team_id);
+    await this.teamsService.requireMembership(userId, teamId);
+    await client.join(teamRoom(teamId));
+    return { ok: true };
+  }
+
+  @SubscribeMessage('team:leave')
+  async onTeamLeave(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: TeamJoinPayload,
+  ) {
+    await client.leave(teamRoom(Number(body.team_id)));
     return { ok: true };
   }
 
