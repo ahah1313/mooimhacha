@@ -29,6 +29,7 @@ interface Settings {
   deadline_penalty_curve: "standard" | "lenient" | "strict";
   min_meeting_minutes: number;
   late_threshold_minutes: number;
+  late_max_minutes: number;
   punctuality_grace_ratio: number;
   leader_bonus_multiplier: number;
   final_task_weight: number;
@@ -310,6 +311,7 @@ export default function SettingsPage() {
   type NumKey =
     | "min_meeting_minutes"
     | "late_threshold_minutes"
+    | "late_max_minutes"
     | "leader_bonus_multiplier";
   const editNum = (key: NumKey, v: string) =>
     setNumDraft((d) => ({ ...d, [key]: v }));
@@ -707,6 +709,30 @@ export default function SettingsPage() {
                 onBlur={(e) =>
                   commitNum("late_threshold_minutes", e.target.value)
                 }
+                disabled={!isLeader}
+              />
+            </div>
+
+            <div className="field">
+              <label className="field-label">
+                지각 최대 인정 시간 (분){" "}
+                <span style={{ color: "var(--text-soft)", fontWeight: 400 }}>
+                  {settings.late_max_minutes === 0
+                    ? "0이면 상한 없음"
+                    : `회의 시작 후 ${settings.late_max_minutes}분 초과 입장 시 결석`}
+                </span>
+              </label>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                max={240}
+                value={
+                  numDraft.late_max_minutes ??
+                  String(settings.late_max_minutes)
+                }
+                onChange={(e) => editNum("late_max_minutes", e.target.value)}
+                onBlur={(e) => commitNum("late_max_minutes", e.target.value)}
                 disabled={!isLeader}
               />
             </div>

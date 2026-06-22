@@ -353,6 +353,14 @@ export class TeamsService {
     if (!settings) throw new NotFoundException('팀 설정을 찾을 수 없습니다.');
 
     Object.assign(settings, dto);
+    if (
+      settings.late_max_minutes !== 0 &&
+      settings.late_max_minutes < settings.late_threshold_minutes
+    ) {
+      throw new BadRequestException(
+        '지각 최대 인정 시간은 0(상한 없음) 또는 지각 기준 이상이어야 합니다.',
+      );
+    }
     await this.settingsRepo.save(settings);
 
     return this.formatSettings(settings);
@@ -373,6 +381,7 @@ export class TeamsService {
       weight_attend_in_meeting: Number(s.weight_attend_in_meeting),
       leader_bonus_multiplier: Number(s.leader_bonus_multiplier),
       late_threshold_minutes: s.late_threshold_minutes,
+      late_max_minutes: s.late_max_minutes,
       slack_bot_token: s.slack_bot_token,
       slack_channel_id: s.slack_channel_id,
     };
