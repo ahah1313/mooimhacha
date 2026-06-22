@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Socket } from "socket.io-client";
 import { useOutletContext } from "react-router-dom";
 import { avatarBg, memberColor } from "@/lib/avatarColor";
+import { truncate } from "@/lib/text";
 import { todayStr, timeMinForDate } from "@/lib/dateUtils";
 import { useToast } from "@/hooks/useToast";
 import Modal from "@/components/Modal";
@@ -769,7 +770,7 @@ export default function TasksPage() {
                           <div
                             className={`tc-title ${status === "완료" ? "done" : ""}`}
                           >
-                            {t.description}
+                            {truncate(t.description)}
                           </div>
                           <span className="tc-diff">
                             {"★".repeat(t.difficulty ?? 1)}
@@ -794,7 +795,7 @@ export default function TasksPage() {
                             >
                               {who[0]}
                             </span>
-                            {who}
+                            {truncate(who)}
                           </span>
                           <div
                             style={{

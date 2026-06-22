@@ -68,6 +68,7 @@ const ATT_BADGE: Record<
 };
 
 import { avatarBg, memberColor } from "@/lib/avatarColor";
+import { truncate } from "@/lib/text";
 
 function meetingMeta(
   m: Meeting,
@@ -1463,35 +1464,39 @@ export default function MeetingPage() {
                             s.speech_ratio != null && s.speech_ratio < 0.1;
                           return (
                             <div key={s.user_id} className="speak-row">
-                              <div
-                                className="av av-sm"
-                                style={{
-                                  background: avatarBg(memberIdx(s.user_id)),
-                                }}
-                              >
-                                {(nicknameMap.get(s.user_id) ?? s.name)[0]}
-                              </div>
-                              <span className="speak-name">
-                                {nicknameMap.get(s.user_id) ?? s.name}
-                              </span>
-                              <span className="speak-bar">
-                                <i
-                                  data-w={pct}
+                              <div className="speak-head">
+                                <div
+                                  className="av av-sm"
                                   style={{
-                                    background: warn
-                                      ? "var(--coral)"
-                                      : memberColor(memberIdx(s.user_id)),
+                                    background: avatarBg(memberIdx(s.user_id)),
                                   }}
-                                />
-                              </span>
-                              <span
-                                className="speak-pct"
-                                style={
-                                  warn ? { color: "var(--coral)" } : undefined
-                                }
-                              >
-                                {s.speech_ratio == null ? "—" : `${pct}%`}
-                              </span>
+                                >
+                                  {(nicknameMap.get(s.user_id) ?? s.name)[0]}
+                                </div>
+                                <span className="speak-name">
+                                  {nicknameMap.get(s.user_id) ?? s.name}
+                                </span>
+                              </div>
+                              <div className="speak-bar-line">
+                                <span className="speak-bar">
+                                  <i
+                                    data-w={pct}
+                                    style={{
+                                      background: warn
+                                        ? "var(--coral)"
+                                        : memberColor(memberIdx(s.user_id)),
+                                    }}
+                                  />
+                                </span>
+                                <span
+                                  className="speak-pct"
+                                  style={
+                                    warn ? { color: "var(--coral)" } : undefined
+                                  }
+                                >
+                                  {s.speech_ratio == null ? "—" : `${pct}%`}
+                                </span>
+                              </div>
                             </div>
                           );
                         })}
@@ -1857,7 +1862,7 @@ export default function MeetingPage() {
                                 >
                                   <i className="ti ti-sparkles" />
                                   <span className="summary-task-desc">
-                                    {task.description}
+                                    {truncate(task.description)}
                                   </span>
                                   <button
                                     className="btn btn-sm btn-primary"

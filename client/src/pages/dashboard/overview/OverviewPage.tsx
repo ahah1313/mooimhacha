@@ -8,6 +8,7 @@ import { connectTeamSocket, joinTeam, leaveTeam } from "@/lib/ws";
 import type { ActionItem, Meeting, TeamContribution } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 import { avatarBg, memberColor } from "@/lib/avatarColor";
+import { truncate } from "@/lib/text";
 
 // 기여도 바 표시 최소 종료 회의 수 (리포트와 동일 기준)
 const REQUIRED_MEETINGS = 3;
@@ -417,39 +418,43 @@ export default function OverviewPage() {
                   const myDone = myTasks.filter((t) => t.status === "done");
                   return (
                     <div key={c.user_id} className="contrib-row">
-                      <span
-                        className="c-name"
-                        data-tooltip={nicknameMap.get(c.user_id) ?? c.name}
-                      >
-                        <span>{nicknameMap.get(c.user_id) ?? c.name}</span>
-                      </span>
-                      <span className="c-bar">
-                        <i
-                          data-w={score ?? 0}
-                          style={{
-                            width: 0,
-                            background: memberColor(memberIdx(c.user_id)),
-                          }}
-                        />
-                      </span>
-                      <span
-                        className="c-pct"
-                        style={
-                          score == null
-                            ? { color: "var(--text-soft)" }
-                            : undefined
-                        }
-                      >
-                        {score == null ? "-%" : `${score}%`}
-                      </span>
-                      <span
-                        className="c-task"
-                        style={{ color: "var(--text-soft)" }}
-                      >
-                        {myTasks.length
-                          ? `태스크 ${myDone.length}/${myTasks.length}`
-                          : "-"}
-                      </span>
+                      <div className="c-head">
+                        <span
+                          className="c-name"
+                          data-tooltip={nicknameMap.get(c.user_id) ?? c.name}
+                        >
+                          <span>{nicknameMap.get(c.user_id) ?? c.name}</span>
+                        </span>
+                        <span
+                          className="c-task"
+                          style={{ color: "var(--text-soft)" }}
+                        >
+                          {myTasks.length
+                            ? `태스크 ${myDone.length}/${myTasks.length}`
+                            : "-"}
+                        </span>
+                      </div>
+                      <div className="c-bar-line">
+                        <span className="c-bar">
+                          <i
+                            data-w={score ?? 0}
+                            style={{
+                              width: 0,
+                              background: memberColor(memberIdx(c.user_id)),
+                            }}
+                          />
+                        </span>
+                        <span
+                          className="c-pct"
+                          style={
+                            score == null
+                              ? { color: "var(--text-soft)" }
+                              : undefined
+                          }
+                        >
+                          {score == null ? "-%" : `${score}%`}
+                        </span>
+                      </div>
                     </div>
                   );
                 })
@@ -551,7 +556,7 @@ export default function OverviewPage() {
                     onClick={canCheck ? () => void toggleTask(t) : undefined}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div>{t.description}</div>
+                    <div>{truncate(t.description)}</div>
                     {t.detail && <div className="tm-detail">{t.detail}</div>}
                   </div>
                   <span

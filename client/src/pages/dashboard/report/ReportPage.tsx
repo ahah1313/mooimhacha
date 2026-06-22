@@ -6,6 +6,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import type { ActionItem, Meeting, TeamContribution } from "@/lib/types";
 import type { TeamContext } from "../DashboardPage";
 import { avatarBg, memberColor } from "@/lib/avatarColor";
+import { truncate } from "@/lib/text";
 
 // 기여도 리포트 열람 최소 종료 회의 수 (정확 측정 전제)
 const REQUIRED_MEETINGS = 3;
@@ -482,7 +483,7 @@ export default function ReportPage() {
                   </div>
                   {/* 오른쪽: 기여도 막대 + 세부 (3) */}
                   <div className="mrc-main">
-                    {/* 헤더: 아바타 · 이름 · 세그먼트 게이지 · 점수 */}
+                    {/* 헤더: 아바타 · (이름+점수 / 역할) — 아바타 높이는 이름+역할에 맞춤 */}
                     <div
                       className="mrc-head"
                       style={{ display: "flex", alignItems: "center", gap: 12 }}
@@ -493,90 +494,89 @@ export default function ReportPage() {
                       >
                         {(nicknameMap.get(m.user_id) ?? m.name)[0]}
                       </div>
-                      {/* 이름 줄: [이름][기여도 바][점수] 한 행, 역할(팀원)은 아래로 */}
+                      {/* 이름 / 역할 — 점수와 기여도 바는 아래 별도 줄로 (이름 잘림 방지) */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
+                          className="mrc-name"
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 10,
+                            minWidth: 0,
                           }}
                         >
-                          <div
-                            className="mrc-name"
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              width: 70,
-                              flex: "0 0 auto",
-                            }}
-                          >
-                            {nicknameMap.get(m.user_id) ?? m.name}
-                            {low && (
-                              <span
-                                className="nav-alert"
-                                title="무임승차 의심"
-                                style={{ marginLeft: 5 }}
-                              >
-                                !
-                              </span>
-                            )}
-                            {me?.id === m.user_id && (
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  color: "var(--text-soft)",
-                                  fontWeight: 400,
-                                  marginLeft: 4,
-                                }}
-                              >
-                                나
-                              </span>
-                            )}
-                          </div>
-                          {/* 세그먼트 게이지 — 이름과 같은 줄, 높이 11px, maxWidth로 길이 고정 */}
-                          <div
-                            style={{
-                              flex: 1,
-                              maxWidth: 260,
-                              height: 11,
-                              borderRadius: 6,
-                              background: "var(--track)",
-                              overflow: "hidden",
-                              display: "flex",
-                            }}
-                            title={`발언 ${segS.toFixed(1)} + 출석 ${segA.toFixed(1)} + 태스크 ${segT.toFixed(1)}`}
-                          >
+                          {nicknameMap.get(m.user_id) ?? m.name}
+                          {low && (
+                            <span
+                              className="nav-alert"
+                              title="무임승차 의심"
+                              style={{ marginLeft: 5 }}
+                            >
+                              !
+                            </span>
+                          )}
+                          {me?.id === m.user_id && (
                             <span
                               style={{
-                                width: `${segS}%`,
-                                background: SEG_COLOR.speech,
+                                fontSize: 10,
+                                color: "var(--text-soft)",
+                                fontWeight: 400,
+                                marginLeft: 4,
                               }}
-                            />
-                            <span
-                              style={{
-                                width: `${segA}%`,
-                                background: SEG_COLOR.attend,
-                              }}
-                            />
-                            <span
-                              style={{
-                                width: `${segT}%`,
-                                background: SEG_COLOR.task,
-                              }}
-                            />
-                          </div>
-                          {/* 점수는 바 오른쪽에 바로 (margin-left:auto 무력화) */}
-                          <div
-                            className={`mrc-score ${scoreCls}`}
-                            style={{ flex: "0 0 auto", marginLeft: 0 }}
-                          >
-                            {`${score}점`}
-                          </div>
+                            >
+                              나
+                            </span>
+                          )}
                         </div>
                         <div className="mrc-role">
                           {m.role === "leader" ? "팀장" : "팀원"}
                         </div>
+                      </div>
+                    </div>
+
+                    {/* 기여도 바 + 점수 — 헤더와 분리된 별도 줄, 바는 가로 꽉 차게 */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                      }}
+                    >
+                      <div
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          height: 11,
+                          borderRadius: 6,
+                          background: "var(--track)",
+                          overflow: "hidden",
+                          display: "flex",
+                        }}
+                        title={`발언 ${segS.toFixed(1)} + 출석 ${segA.toFixed(1)} + 태스크 ${segT.toFixed(1)}`}
+                      >
+                        <span
+                          style={{
+                            width: `${segS}%`,
+                            background: SEG_COLOR.speech,
+                          }}
+                        />
+                        <span
+                          style={{
+                            width: `${segA}%`,
+                            background: SEG_COLOR.attend,
+                          }}
+                        />
+                        <span
+                          style={{
+                            width: `${segT}%`,
+                            background: SEG_COLOR.task,
+                          }}
+                        />
+                      </div>
+                      <div
+                        className={`mrc-score ${scoreCls}`}
+                        style={{ flex: "0 0 auto" }}
+                      >
+                        {`${score}점`}
                       </div>
                     </div>
 
@@ -647,7 +647,9 @@ export default function ReportPage() {
                         return (
                           <div key={t.id} className="mdt-row">
                             <span className="mdt-stars">{"★".repeat(d)}</span>
-                            <span className="mdt-desc">{t.description}</span>
+                            <span className="mdt-desc">
+                              {truncate(t.description)}
+                            </span>
                             <span className="mdt-detail">{t.detail || ""}</span>
                             <span className="mdt-date">
                               {t.completed_at ? shortDate(t.completed_at) : ""}
