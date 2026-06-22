@@ -131,7 +131,7 @@ export class SlackController {
                 type: 'button',
                 text: { type: 'plain_text', text: '🔘 클릭해서 테스트' },
                 action_id: 'test_interaction',
-                value: 'test',
+                value: `test:${teamId}`,
               },
             ],
           },
@@ -161,6 +161,21 @@ export class SlackController {
       if (payload.type === 'block_actions') {
         for (const action of payload.actions ?? []) {
           if (action.action_id === 'test_interaction') {
+            const teamId = Number(action.value.split(':')[1]);
+            if (!isNaN(teamId)) {
+              void (async () => {
+                const settings = await this.settingsRepo.findOne({
+                  where: { team_id: teamId },
+                });
+                if (settings?.slack_bot_token) {
+                  await this.slackService.sendDm(
+                    settings.slack_bot_token,
+                    payload.user.id,
+                    '✅ 버튼 연동 확인! 서버가 인터랙션을 정상 수신했습니다.',
+                  );
+                }
+              })();
+            }
             return {
               replace_original: true,
               text: '✅ 버튼 연동 정상 작동! 슬랙 인터랙션이 서버에 도달했습니다.',

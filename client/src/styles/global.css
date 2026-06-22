@@ -209,7 +209,7 @@ body::after {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 16px;
   transition:
     background-color 0.45s ease,
     border-color 0.45s ease;
@@ -219,6 +219,9 @@ body::after {
   align-items: center;
   gap: 9px;
   padding: 16px 18px 12px;
+}
+.card-body {
+  padding: 0 18px 16px;
 }
 .card-title {
   font-size: 14px;

@@ -924,7 +924,7 @@ export default function TasksPage() {
           })}
           {listFilteredTasks.length === 0 && (
             <div
-              style={{ padding: 18, fontSize: 13, color: "var(--text-soft)" }}
+              style={{ padding: 18, fontSize: 12.5, color: "var(--text-soft)" }}
             >
               {filter === "mine"
                 ? "나에게 배정된 태스크가 없습니다."

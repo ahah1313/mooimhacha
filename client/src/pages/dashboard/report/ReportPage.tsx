@@ -399,7 +399,11 @@ export default function ReportPage() {
       </div>
 
       {/* 팀원별 기여도 (행별 레이더 + 막대) */}
-      <Card icon="ti ti-chart-bar" title="팀원별 기여도">
+      <Card
+        icon="ti ti-chart-bar"
+        title="팀원별 기여도"
+        style={{ marginBottom: 16 }}
+      >
         {/* 게이지 범례 */}
         <div
           style={{

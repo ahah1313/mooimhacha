@@ -448,7 +448,7 @@ export default function SettingsPage() {
         <div
           data-tour="st-info"
           style={{
-            padding: "8px 16px 16px",
+            padding: "8px 18px 16px",
             display: "flex",
             flexDirection: "column",
             gap: 12,
@@ -489,7 +489,7 @@ export default function SettingsPage() {
 
       {/* 초대 코드 */}
       <Card icon="ti ti-key" title="초대 코드">
-        <div data-tour="st-invite" style={{ padding: "8px 16px 16px" }}>
+        <div data-tour="st-invite" style={{ padding: "8px 18px 16px" }}>
           <div
             style={{ marginBottom: 8, fontSize: 12, color: "var(--text-soft)" }}
           >
@@ -542,7 +542,7 @@ export default function SettingsPage() {
 
       {/* 멤버 관리 */}
       <Card icon="ti ti-users" title="멤버 관리">
-        <div data-tour="st-members" style={{ padding: "8px 16px 16px" }}>
+        <div data-tour="st-members" style={{ padding: "8px 18px 16px" }}>
           {members.map((m, i) => {
             const isMe = me?.id === m.user_id;
             return (
@@ -629,7 +629,7 @@ export default function SettingsPage() {
           <div
             data-tour="st-settings"
             style={{
-              padding: "8px 16px 16px",
+              padding: "8px 18px 16px",
               display: "flex",
               flexDirection: "column",
               gap: 14,
@@ -1042,7 +1042,7 @@ export default function SettingsPage() {
       <Card icon="ti ti-brand-slack" title="Slack 알림 연동">
         <div
           style={{
-            padding: "8px 16px 16px",
+            padding: "8px 18px 16px",
             display: "flex",
             flexDirection: "column",
             gap: 14,
@@ -1226,7 +1226,7 @@ export default function SettingsPage() {
         <div
           data-tour="st-danger"
           style={{
-            padding: "8px 16px 16px",
+            padding: "8px 18px 16px",
             display: "flex",
             flexDirection: "column",
             gap: 16,
