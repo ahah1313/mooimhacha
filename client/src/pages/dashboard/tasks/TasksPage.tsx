@@ -212,8 +212,13 @@ export default function TasksPage() {
   const done = tasks.filter((t) => t.status === "done").length;
   const total = tasks.length;
 
-  // 마감일 오름차순, 동일 날짜면 난이도 내림차순(높은 것 먼저)
+  // 완료: completed_at 최신 순 / 나머지: 마감일 오름차순, 동일 날짜면 난이도 내림차순
   const sortedTasks = [...tasks].sort((a, b) => {
+    if (a.status === "done" && b.status === "done") {
+      const at = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+      const bt = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+      return bt - at;
+    }
     if (a.due_date && b.due_date) {
       const diff =
         new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
@@ -232,12 +237,25 @@ export default function TasksPage() {
       filter === "mine"
         ? tasks.filter((t) => t.assignee_id === currentUser?.id)
         : [...tasks];
-    if (listSort === "newest") return base.sort((a, b) => b.id - a.id);
-    if (listSort === "oldest") return base.sort((a, b) => a.id - b.id);
-    return base.sort((a, b) => {
-      const d = (b.difficulty ?? 1) - (a.difficulty ?? 1);
-      return d !== 0 ? d : b.id - a.id;
-    });
+    const active = base.filter((t) => t.status !== "done");
+    const done = base
+      .filter((t) => t.status === "done")
+      .sort((a, b) => {
+        const at = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+        const bt = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+        return bt - at;
+      });
+    if (listSort === "newest")
+      return [...active.sort((a, b) => b.id - a.id), ...done];
+    if (listSort === "oldest")
+      return [...active.sort((a, b) => a.id - b.id), ...done];
+    return [
+      ...active.sort((a, b) => {
+        const d = (b.difficulty ?? 1) - (a.difficulty ?? 1);
+        return d !== 0 ? d : b.id - a.id;
+      }),
+      ...done,
+    ];
   })();
 
   useEffect(() => {

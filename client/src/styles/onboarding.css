@@ -65,11 +65,13 @@
 .ob-card {
   width: 460px;
   max-width: 94vw;
+  max-height: calc(100vh - 160px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 22px;
   box-shadow: var(--shadow-md);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .ob-pane {
   display: none;

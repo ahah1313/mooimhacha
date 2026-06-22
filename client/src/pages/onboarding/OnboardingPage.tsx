@@ -34,7 +34,7 @@ export default function OnboardingPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [copied, setCopied] = useState(false);
   // 팀 설정 접이식 — 기본 펼침(세부 설정을 바로 보여줘 설정을 유도). 바꾼 값만 생성 후 PATCH 한다.
-  const [showSettings, setShowSettings] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState<OnboardingSettings>({
     ...DEFAULT_SETTINGS,
   });
@@ -109,7 +109,7 @@ export default function OnboardingPage() {
       setInviteCode(data.invite_code);
       setTeamId(data.id);
       console.log(data);
-      
+
       setStep(1);
     } catch (err) {
       showToast((err as Error).message || "팀 생성 실패");
@@ -222,7 +222,11 @@ export default function OnboardingPage() {
                     마감일 <span className="opt">(선택)</span>
                   </label>
                   <div className="field-desc">제출 마감일</div>
-                  <input className="input" type="date" data-tour="deadline-field" />
+                  <input
+                    className="input"
+                    type="date"
+                    data-tour="deadline-field"
+                  />
                 </div>
                 <div className="field">
                   <label className="field-label">최대 인원</label>
@@ -253,8 +257,8 @@ export default function OnboardingPage() {
                 {showSettings && (
                   <div className="ob-settings-body">
                     <div className="ob-settings-desc">
-                      기여도 집계 규칙이에요. 우리 팀에 맞게 조정해 두면 리포트가
-                      더 정확해져요 — 기본값으로 시작해도 괜찮아요.
+                      기여도 집계 규칙이에요. 우리 팀에 맞게 조정해 두면
+                      리포트가 더 정확해져요 — 기본값으로 시작해도 괜찮아요.
                     </div>
                     <div className="field">
                       <label className="field-label">기여도 공개 범위</label>
@@ -297,7 +301,9 @@ export default function OnboardingPage() {
                           해당 회의 기여도 집계 제외
                         </option>
                         <option value="zero">기여도 0점 처리</option>
-                        <option value="attendance_only">출석 점수만 차감</option>
+                        <option value="attendance_only">
+                          출석 점수만 차감
+                        </option>
                       </select>
                     </div>
                     <div className="field">
@@ -323,7 +329,9 @@ export default function OnboardingPage() {
                     </div>
                     <div className="field-row">
                       <div className="field">
-                        <label className="field-label">최소 회의 시간 (분)</label>
+                        <label className="field-label">
+                          최소 회의 시간 (분)
+                        </label>
                         <div className="field-desc">
                           이보다 짧은 회의는 집계 제외
                         </div>

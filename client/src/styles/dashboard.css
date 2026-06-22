@@ -381,10 +381,7 @@
   font-weight: 600;
   margin-bottom: 16px;
 }
-.alert-bar.critical {
-  background: var(--coral-soft);
-  color: var(--coral);
-}
+
 .alert-bar .ti {
   font-size: 17px;
 }
@@ -1379,6 +1376,7 @@
   padding: 11px;
   display: flex;
   flex-direction: column;
+  min-height: calc(100vh - 260px);
   max-height: calc(100vh - 260px);
 }
 .col-cards {

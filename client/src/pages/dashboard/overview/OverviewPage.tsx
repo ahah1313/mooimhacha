@@ -263,32 +263,36 @@ export default function OverviewPage() {
 
   return (
     <div>
-      {derived.overdue.length > 0 && (
-        <div className="alert-bar critical">
-          <i className="ti ti-clock-x" />{" "}
-          {(() => {
-            const name = derived.nameById.get(
-              derived.overdue[0].assignee_id ?? -1,
-            );
-            return name
-              ? `${name}님의 태스크 ${derived.overdue.length}개가 기한을 초과했습니다.`
-              : `기한 초과 태스크가 ${derived.overdue.length}개 있습니다.`;
-          })()}
+      {(derived.overdue.length > 0 || derived.urgent.length > 0) && (
+        <div className="alert-bar" data-tour="ov-alert">
+          <i
+            className={
+              derived.overdue.length > 0
+                ? "ti ti-clock-x"
+                : "ti ti-alert-triangle"
+            }
+          />
+          {derived.overdue.length > 0 && derived.urgent.length > 0
+            ? `기한 초과 ${derived.overdue.length}개 · 곧 마감 ${derived.urgent.length}개`
+            : derived.overdue.length > 0
+              ? (() => {
+                  const name = derived.nameById.get(
+                    derived.overdue[0].assignee_id ?? -1,
+                  );
+                  return name
+                    ? `${name}님의 태스크 ${derived.overdue.length}개가 기한을 초과했습니다.`
+                    : `기한 초과 태스크가 ${derived.overdue.length}개 있습니다.`;
+                })()
+              : (() => {
+                  const name = derived.nameById.get(
+                    derived.urgent[0].assignee_id ?? -1,
+                  );
+                  return name
+                    ? `${name}님의 태스크 ${derived.urgent.length}개가 곧 마감입니다. 아직 시작하지 않았어요.`
+                    : `곧 마감인 태스크가 ${derived.urgent.length}개 있습니다. 아직 시작하지 않았어요.`;
+                })()}
         </div>
       )}
-      {derived.urgent.length > 0 ? (
-        <div className="alert-bar" data-tour="ov-alert">
-          <i className="ti ti-alert-triangle" />{" "}
-          {(() => {
-            const name = derived.nameById.get(
-              derived.urgent[0].assignee_id ?? -1,
-            );
-            return name
-              ? `${name}님의 태스크 ${derived.urgent.length}개가 곧 마감입니다. 아직 시작하지 않았어요.`
-              : `곧 마감인 태스크가 ${derived.urgent.length}개 있습니다. 아직 시작하지 않았어요.`;
-          })()}
-        </div>
-      ) : null}
 
       {/* 통계 */}
       <div className="stats-grid" data-tour="ov-stats">
