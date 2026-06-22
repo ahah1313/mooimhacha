@@ -79,6 +79,9 @@ export default function SettingsPage() {
   const [actionBusy, setActionBusy] = useState(false);
   const [slackUserId, setSlackUserId] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const [testingSlack, setTestingSlack] = useState<
+    "channel" | "dm" | "button" | null
+  >(null);
 
   const loadMembers = useCallback(() => {
     if (!team) return;
@@ -349,6 +352,28 @@ export default function SettingsPage() {
     }
   }
 
+  async function testSlack(type: "channel" | "dm" | "button") {
+    if (!team) return;
+    setTestingSlack(type);
+    try {
+      await apiFetch(`/api/slack/test?team_id=${team.id}&type=${type}`, {
+        method: "POST",
+        headers: authHeader(),
+      });
+      showToast(
+        type === "channel"
+          ? "채널 메시지가 전송됐습니다"
+          : type === "button"
+            ? "버튼 포함 DM이 전송됐습니다. Slack에서 버튼을 클릭해 확인하세요"
+            : "개인 DM이 전송됐습니다",
+      );
+    } catch (err) {
+      showToast((err as Error).message || "전송 실패", "error");
+    } finally {
+      setTestingSlack(null);
+    }
+  }
+
   async function handleDelete() {
     if (!team || deleteConfirmName !== team.name) return;
     setDeleting(true);
@@ -603,20 +628,14 @@ export default function SettingsPage() {
                 >
                   마감을 넘겨 제출한 태스크의 감점 폭을 정합니다.
                   <br />
-                  <strong style={{ color: "var(--text-main)" }}>
-                    표준
-                  </strong>{" "}
-                  · 경과 시간에 비례해 일반적인 수준으로 감점합니다.
+                  <strong style={{ color: "var(--text-main)" }}>표준</strong> ·
+                  경과 시간에 비례해 일반적인 수준으로 감점합니다.
                   <br />
-                  <strong style={{ color: "var(--text-main)" }}>
-                    완화
-                  </strong>{" "}
-                  · 늦게 제출해도 감점 폭이 작아 마감을 유연하게 적용합니다.
+                  <strong style={{ color: "var(--text-main)" }}>완화</strong> ·
+                  늦게 제출해도 감점 폭이 작아 마감을 유연하게 적용합니다.
                   <br />
-                  <strong style={{ color: "var(--text-main)" }}>
-                    엄격
-                  </strong>{" "}
-                  · 감점 폭이 커 기한 준수를 강하게 반영합니다.
+                  <strong style={{ color: "var(--text-main)" }}>엄격</strong> ·
+                  감점 폭이 커 기한 준수를 강하게 반영합니다.
                 </div>
               )}
               <select
@@ -656,12 +675,8 @@ export default function SettingsPage() {
                   numDraft.min_meeting_minutes ??
                   String(settings.min_meeting_minutes)
                 }
-                onChange={(e) =>
-                  editNum("min_meeting_minutes", e.target.value)
-                }
-                onBlur={(e) =>
-                  commitNum("min_meeting_minutes", e.target.value)
-                }
+                onChange={(e) => editNum("min_meeting_minutes", e.target.value)}
+                onBlur={(e) => commitNum("min_meeting_minutes", e.target.value)}
                 disabled={!isLeader}
               />
             </div>
@@ -1016,6 +1031,58 @@ export default function SettingsPage() {
                   채널 ID 복사
                 </p>
               </div>
+              {settings.slack_bot_token && (
+                <div className="field">
+                  <label className="field-label">연동 테스트</label>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                    <button
+                      className="btn"
+                      style={{ flex: 1 }}
+                      disabled={
+                        !settings.slack_channel_id || testingSlack === "channel"
+                      }
+                      onClick={() => void testSlack("channel")}
+                    >
+                      <i className="ti ti-send" />
+                      {testingSlack === "channel"
+                        ? "전송 중…"
+                        : "채널 메시지 테스트"}
+                    </button>
+                    <button
+                      className="btn"
+                      style={{ flex: 1 }}
+                      disabled={testingSlack === "dm"}
+                      onClick={() => void testSlack("dm")}
+                    >
+                      <i className="ti ti-message" />
+                      {testingSlack === "dm" ? "전송 중…" : "개인 DM 테스트"}
+                    </button>
+                  </div>
+                  <button
+                    className="btn"
+                    style={{ width: "100%" }}
+                    disabled={testingSlack === "button"}
+                    onClick={() => void testSlack("button")}
+                  >
+                    <i className="ti ti-hand-click" />
+                    {testingSlack === "button"
+                      ? "전송 중…"
+                      : "버튼 클릭 테스트 (DM으로 버튼 전송)"}
+                  </button>
+                  <p
+                    style={{
+                      margin: "6px 0 0",
+                      fontSize: 12,
+                      color: "var(--text-soft)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    채널 ID와 내 Slack User ID를 저장한 뒤 테스트하세요. 버튼
+                    테스트는 DM으로 버튼이 전송되며, 클릭 시 서버 연동을
+                    확인합니다.
+                  </p>
+                </div>
+              )}
               <hr
                 style={{
                   border: "none",
