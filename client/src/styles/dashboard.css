@@ -216,6 +216,7 @@
   border: 1px solid var(--border-2);
   border-radius: 12px;
   background: var(--surface);
+  margin-top: 8px;
 }
 .sb-user-name {
   font-size: 12.5px;
