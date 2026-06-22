@@ -1264,7 +1264,7 @@ export default function TasksPage() {
               value={editDetail}
               onChange={(e) => setEditDetail(e.target.value)}
             />
-            <div className="field-hint">세부사항은 승인 없이 바로 반영돼요</div>
+
           </div>
           <div className="field-row">
             <div className="field">
