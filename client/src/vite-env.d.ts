@@ -44,6 +44,12 @@ interface Window {
                 title: string;
                 link: { mobileWebUrl: string; webUrl: string };
               }[];
+            }
+          | {
+              objectType: "text";
+              text: string;
+              link: { mobileWebUrl: string; webUrl: string };
+              buttonTitle?: string;
             },
       ) => void;
     };

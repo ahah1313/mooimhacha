@@ -200,6 +200,23 @@ export default function SettingsPage() {
     setTimeout(() => setInviteCopied(false), 2000);
   }
 
+  function shareKakao() {
+    if (!detail || !team) return;
+    if (!window.Kakao?.isInitialized()) {
+      showToast("카카오 SDK가 초기화되지 않았습니다");
+      return;
+    }
+    window.Kakao.Share.sendDefault({
+      objectType: "text",
+      text: `[무임하차] ${team.name}\n초대코드: ${detail.invite_code}\n${me?.name ?? "팀원"}님이 초대하셨습니다!`,
+      link: {
+        mobileWebUrl: window.location.origin,
+        webUrl: window.location.origin,
+      },
+      buttonTitle: "무임하차 열기",
+    });
+  }
+
   async function regenerateCode() {
     if (!team) return;
     try {
@@ -485,6 +502,18 @@ export default function SettingsPage() {
               <i className={inviteCopied ? "ti ti-check" : "ti ti-copy"} />
               {inviteCopied ? "복사됨" : "복사"}
             </button>
+            <button
+              className="btn"
+              onClick={shareKakao}
+              style={{
+                background: "#FEE500",
+                color: "#191919",
+                border: "none",
+              }}
+            >
+              <i className="ti ti-brand-kakao" />
+              카카오 공유
+            </button>
             {isLeader && (
               <button className="btn" onClick={regenerateCode}>
                 <i className="ti ti-refresh" /> 재발급
@@ -753,8 +782,7 @@ export default function SettingsPage() {
                 min={0}
                 max={240}
                 value={
-                  numDraft.late_max_minutes ??
-                  String(settings.late_max_minutes)
+                  numDraft.late_max_minutes ?? String(settings.late_max_minutes)
                 }
                 onChange={(e) => editNum("late_max_minutes", e.target.value)}
                 onBlur={(e) => commitNum("late_max_minutes", e.target.value)}
