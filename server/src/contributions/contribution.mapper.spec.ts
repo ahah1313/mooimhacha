@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import {
   absentUnexcusedIds,
   deriveMemberData,
@@ -17,6 +18,8 @@ const SETTINGS: TeamSettingsPayload = {
   weight_speech_in_meeting: 0.6,
   weight_attend_in_meeting: 0.4,
   leader_bonus_multiplier: 1.0,
+  late_threshold_minutes: 5,
+  late_max_minutes: 0,
 };
 
 describe('mapTeamSettings — 우리 설정 → 외부 TeamSettingsSchema', () => {
