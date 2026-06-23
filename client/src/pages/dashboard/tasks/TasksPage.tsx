@@ -309,8 +309,8 @@ export default function TasksPage() {
     });
   }, [done, total]);
 
-  // 누구든 수정 가능 (권한은 서버에서 팀 멤버십으로 검증)
-  const canEdit = (_t: ActionItem) => true;
+  const canEdit = (t: ActionItem) =>
+    t.assignee_id == null || t.assignee_id === currentUser?.id;
 
   function openEdit(task: ActionItem) {
     setEditTarget(task);
@@ -690,9 +690,21 @@ export default function TasksPage() {
       {view === "board" && (
         <div className="board" data-tour="tk-board">
           {STATUS_COLS.map((col) => {
-            const colTasks = filteredTasks.filter(
+            const colTasksRaw = filteredTasks.filter(
               (t) => API_TO_STATUS[t.status] === col,
             );
+            const colTasks =
+              col === "완료"
+                ? [...colTasksRaw].sort((a, b) => {
+                    const at = a.completed_at
+                      ? new Date(a.completed_at).getTime()
+                      : 0;
+                    const bt = b.completed_at
+                      ? new Date(b.completed_at).getTime()
+                      : 0;
+                    return bt - at;
+                  })
+                : colTasksRaw;
             return (
               <div
                 key={col}
@@ -1265,7 +1277,6 @@ export default function TasksPage() {
               value={editDetail}
               onChange={(e) => setEditDetail(e.target.value)}
             />
-
           </div>
           <div className="field-row">
             <div className="field">
