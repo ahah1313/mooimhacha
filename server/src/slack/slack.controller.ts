@@ -152,9 +152,7 @@ export class SlackController {
   @ApiOperation({
     summary: 'Slack 인터랙티브 컴포넌트 핸들러 (동의·테스트 버튼)',
   })
-  async handleInteraction(
-    @Body('payload') rawPayload: string,
-  ): Promise<object> {
+  handleInteraction(@Body('payload') rawPayload: string): object {
     if (!rawPayload) return {};
     try {
       const payload = JSON.parse(rawPayload) as SlackInteractionPayload;

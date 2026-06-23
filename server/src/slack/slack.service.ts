@@ -55,11 +55,11 @@ export class SlackService {
       const res = await client.conversations.open({ users: slackUserId });
       const dmChannelId = res.channel?.id;
       if (!dmChannelId) return;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await client.chat.postMessage({
         channel: dmChannelId,
         text,
-        blocks: blocks as any,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        blocks: blocks as any, // Slack SDK blocks 타입 불일치 우회
       });
     } catch (e) {
       this.logger.error('Slack DM(blocks) 전송 실패', e as Error);
