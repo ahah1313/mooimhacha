@@ -4,9 +4,6 @@ import AuthCallback from "@/pages/login/AuthCallback";
 import OnboardingPage from "@/pages/onboarding/OnboardingPage";
 import HomePage from "@/pages/home/HomePage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
-import MeetingLauncher from "@/pages/meeting/MeetingLauncher";
-import ContributionDashboard from "@/pages/meeting/ContributionDashboard";
-import AttendancePage from "@/pages/attendance/AttendancePage";
 import TermsPage from "@/pages/terms/TermsPage";
 import TourOverlay from "@/components/tour/TourOverlay";
 import { useToast } from "@/hooks/useToast";
@@ -52,30 +49,7 @@ export default function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/meetings"
-          element={
-            <PrivateRoute>
-              <MeetingLauncher />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/meetings/:meetingId/report"
-          element={
-            <PrivateRoute>
-              <ContributionDashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/meetings/:meetingId/attendance"
-          element={
-            <PrivateRoute>
-              <AttendancePage />
-            </PrivateRoute>
-          }
-        />
+
         <Route path="/terms" element={<TermsPage />} />
         {/* 정의되지 않은 경로는 로그인으로 */}
         <Route path="*" element={<Navigate to="/login" replace />} />
