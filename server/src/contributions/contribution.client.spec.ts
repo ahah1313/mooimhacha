@@ -1,4 +1,3 @@
-/// <reference types="jest" />
 import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ContributionClient } from './contribution.client';
